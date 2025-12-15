@@ -1,0 +1,93 @@
+<!-- 主页：分析结果列表 -->
+<view class="container">
+  <!-- 移仓提示横幅 -->
+  <view class="switch-banner" wx:if="{{switches.length > 0}}">
+    <view class="switch-title">⚠️ 移仓提示</view>
+    <view class="switch-item" wx:for="{{switches}}" wx:key="name">
+      {{item.name}}: {{item.previous_contract}} → {{item.main_contract}}
+    </view>
+  </view>
+
+  <!-- 筛选栏 -->
+  <view class="filter-bar">
+    <view 
+      class="filter-item {{currentFilter === item ? 'active' : ''}}"
+      wx:for="{{filters}}" 
+      wx:key="*this"
+      data-filter="{{item}}"
+      bindtap="onFilterTap"
+    >
+      {{item}}
+      <text class="filter-count" wx:if="{{item === '做多'}}">({{stats.long}})</text>
+      <text class="filter-count" wx:if="{{item === '做空'}}">({{stats.short}})</text>
+      <text class="filter-count" wx:if="{{item === '观望'}}">({{stats.wait}})</text>
+      <text class="filter-count" wx:if="{{item === '总计'}}">({{total}})</text>
+    </view>
+  </view>
+
+  <!-- 日期显示 -->
+  <view class="date-bar">
+    <text>📅 {{date}}  <text wx:if="{{generatedAt}}">🕐 {{generatedAt}}</text></text>
+    <text class="refresh-hint">下拉刷新数据</text>
+  </view>
+
+  <!-- 加载中 -->
+  <view class="loading" wx:if="{{loading}}">
+    <view class="loading-icon">⏳</view>
+    <text>加载中...</text>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty" wx:elif="{{results.length === 0}}">
+    <view class="empty-icon">📭</view>
+    <text>暂无分析结果</text>
+    <text class="empty-hint">请等待后端定时任务执行</text>
+  </view>
+
+  <!-- 结果列表 -->
+  <view class="result-list" wx:else>
+    <view 
+      class="result-item {{item.status === '移仓中' ? 'switching' : ''}}"
+      wx:for="{{results}}" 
+      wx:key="contract"
+      data-contract="{{item.contract}}"
+      bindtap="onItemTap"
+    >
+      <view class="item-header">
+        <view class="item-contract">
+          <text class="status-icon">{{item.status === '主力' ? '🔥' : (item.status === '移仓中' ? '📦' : '')}}</text>
+          <text class="contract-name">{{item.contract}}</text>
+          <text class="variety-name">{{item.name}}</text>
+        </view>
+        <view class="tag {{item.direction === '做多' ? 'tag-long' : (item.direction === '做空' ? 'tag-short' : 'tag-wait')}}">
+          {{item.direction}}
+        </view>
+      </view>
+      
+      <view class="item-body">
+        <view class="item-row">
+          <text class="label">评分</text>
+          <text class="value score">{{item.score}}</text>
+        </view>
+        <view class="item-row">
+          <text class="label">价格</text>
+          <text class="value">{{item.price}}</text>
+        </view>
+        <view class="item-row">
+          <text class="label">RSI</text>
+          <text class="value">{{item.rsi}}</text>
+        </view>
+        <view class="item-row">
+          <text class="label">背离</text>
+          <text class="value {{item.divergence !== '无背离' ? 'highlight' : ''}}">{{item.divergence}}</text>
+        </view>
+      </view>
+
+      <view class="item-footer">
+        <text class="confidence">确定性: {{item.confidence}}</text>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+  </view>
+</view>
+

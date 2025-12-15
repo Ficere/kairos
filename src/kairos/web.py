@@ -16,31 +16,36 @@ def get_output_dir() -> str:
     return f"plans/{datetime.now().strftime('%Y-%m-%d')}"
 
 
-def load_results() -> tuple[list, list]:
-    """加载今日分析结果，返回 (decisions, switches)"""
+def load_results() -> tuple[list, list, str]:
+    """加载今日分析结果，返回 (decisions, switches, generated_at)"""
     output_dir = get_output_dir()
     date_str = datetime.now().strftime("%Y-%m-%d")
-    decisions, switches = [], []
+    decisions, switches, generated_at = [], [], ""
     # 从 plans/ 根目录加载 summary
     summary_path = os.path.join("plans", f"summary_{date_str}.json")
     if os.path.exists(summary_path):
         with open(summary_path, "r", encoding="utf-8") as fp:
-            switches = json.load(fp).get("switches", [])
+            summary = json.load(fp)
+            switches = summary.get("switches", [])
+            generated_at = summary.get("generated_at", "")
     # 从日期目录加载 decisions
     if os.path.exists(output_dir):
         for f in os.listdir(output_dir):
             if f.endswith("_decision.json"):
                 with open(os.path.join(output_dir, f), "r", encoding="utf-8") as fp:
                     decisions.append(json.load(fp))
-    return sorted(decisions, key=lambda x: -x["scores"]["total"]), switches
+    return sorted(decisions, key=lambda x: -x["scores"]["total"]), switches, generated_at
 
 
 def create_layout():
     """创建页面布局 - 纯展示模式"""
-    decisions, switches = load_results()
+    decisions, switches, generated_at = load_results()
     btn_style = {"padding": "10px 20px", "color": "white", "border": "none", "borderRadius": "5px", "cursor": "pointer", "marginRight": "10px"}
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    time_info = f"🕐 数据生成: {generated_at.split(' ')[1]}" if generated_at and ' ' in generated_at else ""
     return html.Div([
         html.H1("📈 Kairos 期货分析系统", style={"textAlign": "center", "color": "#2c3e50"}),
+        html.Div(f"📅 {date_str}  {time_info}", style={"textAlign": "center", "color": "#7f8c8d", "marginBottom": "10px"}),
         html.Div([
             html.Button("🔄 刷新结果", id="refresh-btn", n_clicks=0, style={**btn_style, "backgroundColor": "#27ae60"}),
             html.Button("📥 导出 Excel", id="export-btn", n_clicks=0, style={**btn_style, "backgroundColor": "#3498db"}),
@@ -131,9 +136,10 @@ app.layout = create_layout
           Input("refresh-btn", "n_clicks"), prevent_initial_call=True)
 def handle_refresh(n_clicks):
     """刷新结果（仅重新读取文件，不触发分析）"""
-    decisions, switches = load_results()
+    decisions, switches, generated_at = load_results()
     count = len(decisions)
-    msg = f"✅ 已刷新 ({datetime.now().strftime('%H:%M:%S')}) - 共 {count} 条记录" if count else "📭 暂无今日分析结果"
+    time_info = f" | 数据生成于 {generated_at}" if generated_at else ""
+    msg = f"✅ 已刷新 ({datetime.now().strftime('%H:%M:%S')}) - 共 {count} 条记录{time_info}" if count else "📭 暂无今日分析结果"
     return {"decisions": decisions, "switches": switches}, msg
 
 

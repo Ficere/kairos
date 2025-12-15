@@ -1,0 +1,105 @@
+<!-- 详情页 -->
+<view class="container">
+  <!-- 加载中 -->
+  <view class="loading" wx:if="{{loading}}">
+    <view class="loading-icon">⏳</view>
+    <text>加载中...</text>
+  </view>
+
+  <block wx:elif="{{detail}}">
+    <!-- 头部信息 -->
+    <view class="header card">
+      <view class="header-top">
+        <view class="contract-info">
+          <text class="contract-code">{{detail.display_contract || detail.contract}}</text>
+          <text class="contract-name">{{detail.name}}</text>
+        </view>
+        <view class="tag {{detail.decision.direction === '做多' ? 'tag-long' : (detail.decision.direction === '做空' ? 'tag-short' : 'tag-wait')}}">
+          {{detail.decision.direction}}
+        </view>
+      </view>
+      <view class="price-row">
+        <text class="price">{{detail.current_price}}</text>
+        <text class="price-label">当前价格</text>
+      </view>
+    </view>
+
+    <!-- 评分卡片 -->
+    <view class="card">
+      <view class="card-title">📊 评分详情</view>
+      <view class="score-grid">
+        <view class="score-item">
+          <text class="score-value total">{{detail.scores.total}}</text>
+          <text class="score-label">综合评分</text>
+        </view>
+        <view class="score-item">
+          <text class="score-value">{{detail.scores.technical}}</text>
+          <text class="score-label">技术面</text>
+        </view>
+        <view class="score-item">
+          <text class="score-value">{{detail.scores.macro}}</text>
+          <text class="score-label">宏观面</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 交易建议 -->
+    <view class="card">
+      <view class="card-title">💡 交易建议</view>
+      <view class="info-row">
+        <text class="info-label">确定性</text>
+        <text class="info-value">{{detail.decision.confidence}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">入场区间</text>
+        <text class="info-value">{{detail.decision.entry_range[0]}} - {{detail.decision.entry_range[1]}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">目标价</text>
+        <text class="info-value">{{detail.decision.target}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">止损价</text>
+        <text class="info-value stop">{{detail.decision.stop_loss}}</text>
+      </view>
+    </view>
+
+    <!-- 技术指标 -->
+    <view class="card">
+      <view class="card-title">📈 技术指标</view>
+      <view class="indicator-grid">
+        <view class="indicator-item" wx:if="{{detail.technical_indicators.macd}}">
+          <text class="indicator-name">MACD</text>
+          <text class="indicator-value">DIF: {{detail.technical_indicators.macd.dif}}</text>
+          <text class="indicator-sub">DEA: {{detail.technical_indicators.macd.dea}}</text>
+        </view>
+        <view class="indicator-item" wx:if="{{detail.technical_indicators.kdj}}">
+          <text class="indicator-name">KDJ</text>
+          <text class="indicator-value">K: {{detail.technical_indicators.kdj.k}}</text>
+          <text class="indicator-sub">D: {{detail.technical_indicators.kdj.d}}</text>
+        </view>
+        <view class="indicator-item" wx:if="{{detail.technical_indicators.rsi}}">
+          <text class="indicator-name">RSI</text>
+          <text class="indicator-value">{{detail.technical_indicators.rsi.value}}</text>
+        </view>
+        <view class="indicator-item" wx:if="{{detail.technical_indicators.divergence}}">
+          <text class="indicator-name">背离</text>
+          <text class="indicator-value {{detail.technical_indicators.divergence.type !== '无背离' ? 'highlight' : ''}}">
+            {{detail.technical_indicators.divergence.type}}
+          </text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 技术信号 -->
+    <view class="card" wx:if="{{detail.technical_signals && detail.technical_signals.length > 0}}">
+      <view class="card-title">🔔 技术信号</view>
+      <view class="signal-list">
+        <view class="signal-item" wx:for="{{detail.technical_signals}}" wx:key="*this">
+          {{item}}
+        </view>
+      </view>
+    </view>
+  </block>
+</view>
+

@@ -158,8 +158,10 @@
     "exchange": "DCE",
     "multiplier": 5,
     "tick": 1.0,
-    "main_contract": "EB2601",
-    "last_updated": "2025-12-11"
+    "main_contract": "EB2602",
+    "last_updated": "2025-12-15",
+    "previous_contract": "EB2601",
+    "contract_switch_date": "2025-12-15"
   },
   "EC": {
     "name": "集运指数(欧线)",
@@ -190,8 +192,10 @@
     "exchange": "CZCE",
     "multiplier": 20,
     "tick": 1.0,
-    "main_contract": "FG601",
-    "last_updated": "2025-12-11"
+    "main_contract": "FG605",
+    "last_updated": "2025-12-15",
+    "previous_contract": "FG601",
+    "contract_switch_date": "2025-12-15"
   },
   "FU": {
     "name": "燃料油",
@@ -518,8 +522,10 @@
     "exchange": "SHFE",
     "multiplier": 1,
     "tick": 10.0,
-    "main_contract": "SN2601",
-    "last_updated": "2025-12-11"
+    "main_contract": "SN2602",
+    "last_updated": "2025-12-15",
+    "previous_contract": "SN2601",
+    "contract_switch_date": "2025-12-15"
   },
   "SP": {
     "name": "纸浆",
@@ -598,8 +604,10 @@
     "exchange": "DCE",
     "multiplier": 5,
     "tick": 1.0,
-    "main_contract": "V2601",
-    "last_updated": "2025-12-11"
+    "main_contract": "V2605",
+    "last_updated": "2025-12-15",
+    "previous_contract": "V2601",
+    "contract_switch_date": "2025-12-15"
   },
   "WH": {
     "name": "强麦",

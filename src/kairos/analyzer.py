@@ -188,10 +188,12 @@ def print_summary(results: dict, output_dir: str):
                 icon = "🔥" if status == "主力" else "📦" if status == "移仓中" else ""
                 print(f"   {icon}{d.get('display_contract', d['contract']):8} 评分:{d['scores']['total']:3}")
     date_str = datetime.now().strftime("%Y-%m-%d")
+    generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
     os.makedirs("plans", exist_ok=True)
     save_json(os.path.join("plans", f"summary_{date_str}.json"), {"timestamp": datetime.now().isoformat(),
-        "success": len(results["success"]), "failed": results["failed"], "switches": switches,
-        "long_signals": [d["contract"] for d in longs], "short_signals": [d["contract"] for d in shorts]})
+        "generated_at": generated_at, "success": len(results["success"]), "failed": results["failed"],
+        "switches": switches, "long_signals": [d["contract"] for d in longs],
+        "short_signals": [d["contract"] for d in shorts]})
 
     # 生成 Deep Research 提示词
     from kairos.prompt_generator import generate_deep_research_prompt
