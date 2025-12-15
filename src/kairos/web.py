@@ -1,8 +1,10 @@
 """期货分析 Web 应用 - 纯展示模式（数据由后端定时任务更新）"""
+import io
 import json
 import os
 from datetime import datetime
 from dash import Dash, html, dcc, Input, Output, callback, dash_table, ctx, ALL
+import pandas as pd
 import plotly.graph_objects as go
 
 app = Dash(__name__, title="Kairos 期货分析系统", suppress_callback_exceptions=True)
@@ -17,29 +19,33 @@ def get_output_dir() -> str:
 def load_results() -> tuple[list, list]:
     """加载今日分析结果，返回 (decisions, switches)"""
     output_dir = get_output_dir()
-    if not os.path.exists(output_dir):
-        return [], []
+    date_str = datetime.now().strftime("%Y-%m-%d")
     decisions, switches = [], []
-    for f in os.listdir(output_dir):
-        if f.endswith("_decision.json"):
-            with open(os.path.join(output_dir, f), "r", encoding="utf-8") as fp:
-                decisions.append(json.load(fp))
-        elif f == "summary.json":
-            with open(os.path.join(output_dir, f), "r", encoding="utf-8") as fp:
-                switches = json.load(fp).get("switches", [])
+    # 从 plans/ 根目录加载 summary
+    summary_path = os.path.join("plans", f"summary_{date_str}.json")
+    if os.path.exists(summary_path):
+        with open(summary_path, "r", encoding="utf-8") as fp:
+            switches = json.load(fp).get("switches", [])
+    # 从日期目录加载 decisions
+    if os.path.exists(output_dir):
+        for f in os.listdir(output_dir):
+            if f.endswith("_decision.json"):
+                with open(os.path.join(output_dir, f), "r", encoding="utf-8") as fp:
+                    decisions.append(json.load(fp))
     return sorted(decisions, key=lambda x: -x["scores"]["total"]), switches
 
 
 def create_layout():
     """创建页面布局 - 纯展示模式"""
     decisions, switches = load_results()
+    btn_style = {"padding": "10px 20px", "color": "white", "border": "none", "borderRadius": "5px", "cursor": "pointer", "marginRight": "10px"}
     return html.Div([
         html.H1("📈 Kairos 期货分析系统", style={"textAlign": "center", "color": "#2c3e50"}),
         html.Div([
-            html.Button("🔄 刷新结果", id="refresh-btn", n_clicks=0,
-                        style={"padding": "10px 20px", "backgroundColor": "#27ae60", "color": "white",
-                               "border": "none", "borderRadius": "5px", "cursor": "pointer"}),
+            html.Button("🔄 刷新结果", id="refresh-btn", n_clicks=0, style={**btn_style, "backgroundColor": "#27ae60"}),
+            html.Button("📥 导出 Excel", id="export-btn", n_clicks=0, style={**btn_style, "backgroundColor": "#3498db"}),
         ], style={"textAlign": "center", "margin": "20px"}),
+        dcc.Download(id="download-excel"),
         html.Div(id="switch-alert", style={"textAlign": "center", "margin": "10px"}),
         html.Div(id="status-msg", style={"textAlign": "center", "margin": "10px", "color": "#7f8c8d"}),
         dcc.Store(id="decisions-store", data={"decisions": decisions, "switches": switches}),
@@ -129,6 +135,39 @@ def handle_refresh(n_clicks):
     count = len(decisions)
     msg = f"✅ 已刷新 ({datetime.now().strftime('%H:%M:%S')}) - 共 {count} 条记录" if count else "📭 暂无今日分析结果"
     return {"decisions": decisions, "switches": switches}, msg
+
+
+def build_export_data(decisions: list, current_filter: str) -> list[dict]:
+    """构建导出数据"""
+    filtered = decisions if current_filter == "总计" else [d for d in decisions if d["decision"]["direction"] == current_filter]
+    rows = []
+    for d in filtered:
+        macd, kdj, rsi, div = format_indicators(d)
+        rows.append({"合约": d.get("display_contract", d.get("contract", "-")),
+                     "状态": d.get("contract_status", "稳定"), "名称": d["name"],
+                     "价格": d["current_price"], "方向": d["decision"]["direction"],
+                     "评分": d["scores"]["total"], "MACD": macd, "KDJ": kdj, "RSI": rsi,
+                     "背离信号": div.replace("🔴", "").replace("🟢", "").replace("⚪", ""),
+                     "确定性": d["decision"].get("confidence", d["decision"].get("position", "-"))})
+    return rows
+
+
+@callback(Output("download-excel", "data"), Input("export-btn", "n_clicks"),
+          Input("decisions-store", "data"), Input("selected-filters", "data"), prevent_initial_call=True)
+def export_excel(n_clicks, store_data, current_filter):
+    """导出 Excel 文件"""
+    if ctx.triggered_id != "export-btn":
+        return None
+    decisions = store_data.get("decisions", []) if isinstance(store_data, dict) else store_data
+    if not decisions:
+        return None
+    rows = build_export_data(decisions, current_filter)
+    df = pd.DataFrame(rows)
+    output = io.BytesIO()
+    df.to_excel(output, index=False, engine="openpyxl")
+    output.seek(0)
+    filename = f"kairos_分析结果_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.xlsx"
+    return dcc.send_bytes(output.getvalue(), filename)
 
 
 @callback(Output("switch-alert", "children"), Input("decisions-store", "data"))

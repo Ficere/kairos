@@ -49,15 +49,46 @@ crontab -e
 
 ## 输出
 
-分析结果按日期保存在 `plans/` 目录下：
+分析结果保存在 `plans/` 目录下：
 
 ```text
-plans/2025-12-15/
-├── CU0_decision.json           # 主力合约决策
-├── CU0_decision_previous.json  # 移仓中旧合约决策（如有）
-├── CU0_technical.json          # 技术分析数据
-└── summary.json                # 汇总（含移仓列表）
+plans/
+├── deep_research_2025-12-15.md   # Deep Research 提示词
+├── summary_2025-12-15.json       # 分析汇总（含移仓列表）
+└── 2025-12-15/
+    ├── CU0_decision.json         # 主力合约决策
+    └── CU0_technical.json        # 技术分析数据
 ```
+
+### Deep Research 提示词
+
+每次分析完成后，自动生成 `plans/deep_research_YYYY-MM-DD.md` 文件，包含：
+
+- 当日所有做多/做空信号品种（评分、技术指标摘要）
+- 移仓提示信息
+- 完整的 LLM 分析模板
+
+可直接复制到 ChatGPT、Claude 等进行**宏观面深度分析**，获取供需、政策、行业等基本面信息。
+
+**提示：自定义 Deep Research 分析的重点品种**
+
+当前系统使用 `docs/deep_research_template.md` 作为 Deep Research 提示词的模板。该模板中包含一个"重点跟踪品种"列表（第 11-18 行），默认配置为：
+
+- **黑色系**：螺纹钢、焦煤、焦炭
+- **有色/贵金属**：沪铜、白银
+- **新能源**：碳酸锂、多晶硅
+- **建材**：玻璃
+
+**你可以根据自己的交易偏好修改这个列表**：
+
+1. 打开 `docs/deep_research_template.md` 文件
+2. 找到"## 1. 我当前重点跟踪的品种"章节
+3. 修改品种列表，添加或删除你关注的品种类别和具体品种
+4. 保存文件后，下次运行 `kairos-analyze --all` 时，生成的 `plans/deep_research_YYYY-MM-DD.md` 将包含你的自定义配置
+
+这样，当你将提示词复制到 ChatGPT/Claude 等 LLM 时，AI 会优先分析你指定的品种，并根据技术信号推荐额外的交易机会。
+
+**注意**：修改模板不会影响技术分析本身，只会改变发送给 LLM 的分析请求内容。
 
 ## 品种配置
 
