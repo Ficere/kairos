@@ -13,18 +13,17 @@
 
 ```bash
 # 开发模式安装
-uv pip install -e .
+uv sync
 ```
 
 ## 命令行工具
 
 ```bash
+uv run kairos-analyze --all         # 一键分析所有品种（推荐）
 uv run kairos-analyze AU0 CU0 AG0   # 分析指定品种
-uv run kairos-analyze --all         # 分析所有品种
-uv run kairos-update --add-all      # 添加所有品种配置
 ```
 
-> **注意**：主力合约代码使用 `XX0` 格式（如 `AU0`、`CU0`），表示该品种的主力连续合约。
+> **说明**：`kairos-analyze` 会自动更新主力合约配置，无需额外操作。合约代码使用 `XX0` 格式（如 `AU0`、`CU0`）。
 
 ## Web 界面
 

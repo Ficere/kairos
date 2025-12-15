@@ -70,13 +70,12 @@ def main():
     if len(sys.argv) < 2:
         print("Kairos - 期货交易技术分析系统")
         print("\n用法:")
-        print("  kairos-analyze [品种...]    分析指定品种或全部品种")
-        print("  kairos-update [品种...]     更新主力合约配置")
-        print("  kairos-web                  启动 Web 应用")
+        print("  kairos-analyze [品种...]    分析指定品种（自动更新合约配置）")
+        print("  kairos-analyze --all        分析所有品种")
+        print("  kairos-web                  启动 Web 展示界面")
         print("\n示例:")
         print("  kairos-analyze CU0 AU0      分析铜和黄金")
-        print("  kairos-analyze --all        分析所有品种")
-        print("  kairos-update --add-all     添加所有品种到配置")
+        print("  kairos-analyze --all        一键分析所有品种（推荐）")
         return
     
     cmd = sys.argv[1]
