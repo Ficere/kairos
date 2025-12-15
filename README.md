@@ -22,21 +22,28 @@ uv pip install -e .
 uv run kairos-analyze AU0 CU0 AG0   # 分析指定品种
 uv run kairos-analyze --all         # 分析所有品种
 uv run kairos-update --add-all      # 添加所有品种配置
-uv run kairos-web                   # 启动 Web 展示界面
 ```
 
 > **注意**：主力合约代码使用 `XX0` 格式（如 `AU0`、`CU0`），表示该品种的主力连续合约。
 
+## Web 界面
+
+```bash
+uv run kairos-web                   # 启动 Web 展示界面
+# 访问 http://127.0.0.1:8050
+```
+
+Web 界面为**纯展示模式**，仅显示已生成的分析结果，不触发新的分析任务。
+
 ## 定时任务配置
 
-Web 界面为**纯展示模式**，数据由后端定时任务更新。推荐使用 cron 定时执行分析：
+推荐使用 cron 定时执行分析，Web 界面自动展示最新结果：
 
 ```bash
 # 编辑 crontab
 crontab -e
 
-# 添加定时任务（示例）
-# 每天早上 9:00 和下午 14:00 执行分析
+# 每天早上 9:00 和下午 14:00 执行分析（周一至周五）
 0 9,14 * * 1-5 cd /path/to/kairos && uv run kairos-analyze --all >> /tmp/kairos.log 2>&1
 ```
 
