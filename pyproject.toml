@@ -33,6 +33,7 @@ kairos = "kairos.cli:main"
 kairos-analyze = "kairos.cli:analyze"
 kairos-update = "kairos.cli:update_contracts"
 kairos-web = "kairos.cli:run_web"
+kairos-regenerate-prompt = "kairos.cli:regenerate_prompt"
 
 [build-system]
 requires = ["hatchling"]

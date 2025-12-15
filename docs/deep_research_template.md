@@ -14,7 +14,8 @@
   {"contract": "CU0", "name": "沪铜", "reason": "工业金属龙头，宏观经济风向标"},
   {"contract": "AG0", "name": "白银", "reason": "避险资产，美元/利率敏感"},
   {"contract": "LC0", "name": "碳酸锂", "reason": "新能源板块核心品种"},
-  {"contract": "J0", "name": "焦炭", "reason": "光伏产业链"},
+  {"contract": "J0", "name": "焦炭", "reason": "黑色系"},
+  {"contract": "MA0", "name": "甲醇", "reason": "重要的化工原料"},
   {"contract": "FG0", "name": "玻璃", "reason": "地产链品种"}
 ]
 ```

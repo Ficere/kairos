@@ -65,31 +65,91 @@ def run_web():
     app.run(debug=True, host="0.0.0.0", port=8050)
 
 
+def regenerate_prompt():
+    """kairos-regenerate-prompt 命令：从已有分析结果重新生成 Deep Research 提示词"""
+    from kairos.prompt_generator import regenerate_prompt_from_file
+
+    args = sys.argv[1:]
+
+    # 检查是否需要显示帮助
+    if "--help" in args or "-h" in args:
+        print("\n🔄 Deep Research 提示词重新生成工具")
+        print("\n用法:")
+        print("  kairos-regenerate-prompt                    # 使用最新分析结果")
+        print("  kairos-regenerate-prompt --date 2025-12-15  # 指定日期")
+        print("  kairos-regenerate-prompt --force            # 强制覆盖已存在文件")
+        print("  kairos-regenerate-prompt --date 2025-12-15 --force")
+        print("\n说明:")
+        print("  从已有的分析结果文件重新生成 Deep Research 提示词")
+        print("  适用于调试模板或基于历史数据重新生成提示词")
+        print("\n参数:")
+        print("  --date DATE    指定日期 (格式: YYYY-MM-DD)")
+        print("  --force, -f    强制覆盖已存在的文件")
+        print("  --help, -h     显示此帮助信息")
+        return
+
+    print(f"\n{'='*60}")
+    print("🔄 Deep Research 提示词重新生成工具")
+    print(f"{'='*60}\n")
+
+    date_str = None
+    force = False
+
+    # 解析参数
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg == "--date" and i + 1 < len(args):
+            date_str = args[i + 1]
+            i += 2
+        elif arg == "--force" or arg == "-f":
+            force = True
+            i += 1
+        elif arg.startswith("--"):
+            print(f"❌ 未知参数: {arg}")
+            print("   使用 --help 查看帮助信息")
+            return
+        else:
+            i += 1
+
+    # 执行重新生成
+    result = regenerate_prompt_from_file(date_str, force)
+
+    if result:
+        print(f"\n💡 提示: 可以将生成的文件内容复制到 ChatGPT/Claude 进行深度分析")
+    else:
+        print(f"\n❌ 生成失败")
+
+
 def main():
     """kairos 主命令"""
     if len(sys.argv) < 2:
         print("Kairos - 期货交易技术分析系统")
         print("\n用法:")
-        print("  kairos-analyze [品种...]    分析指定品种（自动更新合约配置）")
-        print("  kairos-analyze --all        分析所有品种")
-        print("  kairos-web                  启动 Web 展示界面")
+        print("  kairos-analyze [品种...]           分析指定品种（自动更新合约配置）")
+        print("  kairos-analyze --all               分析所有品种")
+        print("  kairos-web                         启动 Web 展示界面")
+        print("  kairos-regenerate-prompt           重新生成 Deep Research 提示词")
         print("\n示例:")
-        print("  kairos-analyze CU0 AU0      分析铜和黄金")
-        print("  kairos-analyze --all        一键分析所有品种（推荐）")
+        print("  kairos-analyze CU0 AU0             分析铜和黄金")
+        print("  kairos-analyze --all               一键分析所有品种（推荐）")
+        print("  kairos-regenerate-prompt --date 2025-12-15")
         return
-    
+
     cmd = sys.argv[1]
     sys.argv = [sys.argv[0]] + sys.argv[2:]  # 移除子命令
-    
+
     if cmd == "analyze":
         analyze()
     elif cmd == "update":
         update_contracts()
     elif cmd == "web":
         run_web()
+    elif cmd == "regenerate-prompt":
+        regenerate_prompt()
     else:
         print(f"未知命令: {cmd}")
-        print("可用命令: analyze, update, web")
+        print("可用命令: analyze, update, web, regenerate-prompt")
 
 
 if __name__ == "__main__":
