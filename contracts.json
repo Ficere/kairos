@@ -1,0 +1,644 @@
+{
+  "AU": {
+    "name": "沪金",
+    "exchange": "SHFE",
+    "multiplier": 1000,
+    "tick": 0.02,
+    "main_contract": "AU2602",
+    "last_updated": "2025-12-11"
+  },
+  "LC": {
+    "name": "碳酸锂",
+    "exchange": "GFEX",
+    "multiplier": 1,
+    "tick": 50,
+    "main_contract": "LC2605",
+    "last_updated": "2025-12-11"
+  },
+  "PS": {
+    "name": "多晶硅",
+    "exchange": "GFEX",
+    "multiplier": 3,
+    "tick": 5,
+    "main_contract": "PS2601",
+    "last_updated": "2025-12-11"
+  },
+  "A": {
+    "name": "黄大豆1号",
+    "exchange": "DCE",
+    "multiplier": 10,
+    "tick": 1.0,
+    "main_contract": "A2601",
+    "last_updated": "2025-12-11"
+  },
+  "AG": {
+    "name": "白银",
+    "exchange": "SHFE",
+    "multiplier": 15,
+    "tick": 1.0,
+    "main_contract": "AG2602",
+    "last_updated": "2025-12-11"
+  },
+  "AL": {
+    "name": "铝",
+    "exchange": "SHFE",
+    "multiplier": 5,
+    "tick": 5.0,
+    "main_contract": "AL2602",
+    "last_updated": "2025-12-11"
+  },
+  "AO": {
+    "name": "氧化铝",
+    "exchange": "SHFE",
+    "multiplier": 20,
+    "tick": 1.0,
+    "main_contract": "AO0",
+    "last_updated": "2025-12-11"
+  },
+  "AP": {
+    "name": "苹果",
+    "exchange": "CZCE",
+    "multiplier": 10,
+    "tick": 1.0,
+    "main_contract": "AP0",
+    "last_updated": "2025-12-11"
+  },
+  "B": {
+    "name": "黄大豆2号",
+    "exchange": "DCE",
+    "multiplier": 10,
+    "tick": 1.0,
+    "main_contract": "B0",
+    "last_updated": "2025-12-11"
+  },
+  "BB": {
+    "name": "胶合板",
+    "exchange": "DCE",
+    "multiplier": 500,
+    "tick": 0.05,
+    "main_contract": "BB0",
+    "last_updated": "2025-12-11"
+  },
+  "BC": {
+    "name": "国际铜",
+    "exchange": "UNKNOWN",
+    "multiplier": 5,
+    "tick": 10.0,
+    "main_contract": "BC0",
+    "last_updated": "2025-12-11"
+  },
+  "BR": {
+    "name": "丁二烯橡胶",
+    "exchange": "SHFE",
+    "multiplier": 5,
+    "tick": 5.0,
+    "main_contract": "BR2602",
+    "last_updated": "2025-12-11"
+  },
+  "BU": {
+    "name": "石油沥青",
+    "exchange": "SHFE",
+    "multiplier": 10,
+    "tick": 1.0,
+    "main_contract": "BU2602",
+    "last_updated": "2025-12-11"
+  },
+  "C": {
+    "name": "玉米",
+    "exchange": "DCE",
+    "multiplier": 10,
+    "tick": 1.0,
+    "main_contract": "C2603",
+    "last_updated": "2025-12-11"
+  },
+  "CF": {
+    "name": "棉花",
+    "exchange": "CZCE",
+    "multiplier": 5,
+    "tick": 5.0,
+    "main_contract": "CF605",
+    "last_updated": "2025-12-11"
+  },
+  "CJ": {
+    "name": "红枣",
+    "exchange": "CZCE",
+    "multiplier": 5,
+    "tick": 5.0,
+    "main_contract": "CJ0",
+    "last_updated": "2025-12-11"
+  },
+  "CS": {
+    "name": "玉米淀粉",
+    "exchange": "DCE",
+    "multiplier": 10,
+    "tick": 1.0,
+    "main_contract": "CS0",
+    "last_updated": "2025-12-11"
+  },
+  "CU": {
+    "name": "铜",
+    "exchange": "SHFE",
+    "multiplier": 5,
+    "tick": 10.0,
+    "main_contract": "CU2602",
+    "last_updated": "2025-12-11",
+    "previous_contract": "CU2601",
+    "contract_switch_date": "2025-12-14"
+  },
+  "CY": {
+    "name": "棉纱",
+    "exchange": "CZCE",
+    "multiplier": 5,
+    "tick": 5.0,
+    "main_contract": "CY603",
+    "last_updated": "2025-12-11"
+  },
+  "EB": {
+    "name": "苯乙烯",
+    "exchange": "DCE",
+    "multiplier": 5,
+    "tick": 1.0,
+    "main_contract": "EB2601",
+    "last_updated": "2025-12-11"
+  },
+  "EC": {
+    "name": "集运指数(欧线)",
+    "exchange": "UNKNOWN",
+    "multiplier": 50,
+    "tick": 0.1,
+    "main_contract": "EC0",
+    "last_updated": "2025-12-11"
+  },
+  "EG": {
+    "name": "乙二醇",
+    "exchange": "DCE",
+    "multiplier": 10,
+    "tick": 1.0,
+    "main_contract": "EG2605",
+    "last_updated": "2025-12-14"
+  },
+  "FB": {
+    "name": "纤维板",
+    "exchange": "DCE",
+    "multiplier": 10,
+    "tick": 0.5,
+    "main_contract": "FB0",
+    "last_updated": "2025-12-11"
+  },
+  "FG": {
+    "name": "玻璃",
+    "exchange": "CZCE",
+    "multiplier": 20,
+    "tick": 1.0,
+    "main_contract": "FG601",
+    "last_updated": "2025-12-11"
+  },
+  "FU": {
+    "name": "燃料油",
+    "exchange": "SHFE",
+    "multiplier": 10,
+    "tick": 1.0,
+    "main_contract": "FU2603",
+    "last_updated": "2025-12-11"
+  },
+  "HC": {
+    "name": "热轧卷板",
+    "exchange": "SHFE",
+    "multiplier": 10,
+    "tick": 1.0,
+    "main_contract": "HC2605",
+    "last_updated": "2025-12-11"
+  },
+  "I": {
+    "name": "铁矿石",
+    "exchange": "DCE",
+    "multiplier": 100,
+    "tick": 0.5,
+    "main_contract": "I2605",
+    "last_updated": "2025-12-11"
+  },
+  "IC": {
+    "name": "中证500股指期货",
+    "exchange": "CFFEX",
+    "multiplier": 200,
+    "tick": 0.2,
+    "main_contract": "IC0",
+    "last_updated": "2025-12-11"
+  },
+  "IF": {
+    "name": "沪深300股指期货",
+    "exchange": "CFFEX",
+    "multiplier": 300,
+    "tick": 0.2,
+    "main_contract": "IF0",
+    "last_updated": "2025-12-11"
+  },
+  "IH": {
+    "name": "上证50股指期货",
+    "exchange": "CFFEX",
+    "multiplier": 300,
+    "tick": 0.2,
+    "main_contract": "IH0",
+    "last_updated": "2025-12-11"
+  },
+  "IM": {
+    "name": "中证1000股指期货",
+    "exchange": "CFFEX",
+    "multiplier": 200,
+    "tick": 0.2,
+    "main_contract": "IM0",
+    "last_updated": "2025-12-11"
+  },
+  "J": {
+    "name": "焦炭",
+    "exchange": "DCE",
+    "multiplier": 100,
+    "tick": 0.5,
+    "main_contract": "J2601",
+    "last_updated": "2025-12-11"
+  },
+  "JD": {
+    "name": "鸡蛋",
+    "exchange": "DCE",
+    "multiplier": 10,
+    "tick": 1.0,
+    "main_contract": "JD2602",
+    "last_updated": "2025-12-11"
+  },
+  "JM": {
+    "name": "焦煤",
+    "exchange": "DCE",
+    "multiplier": 60,
+    "tick": 0.5,
+    "main_contract": "JM2605",
+    "last_updated": "2025-12-11"
+  },
+  "JR": {
+    "name": "粳稻",
+    "exchange": "CZCE",
+    "multiplier": 20,
+    "tick": 1.0,
+    "main_contract": "JR0",
+    "last_updated": "2025-12-11"
+  },
+  "L": {
+    "name": "聚乙烯",
+    "exchange": "DCE",
+    "multiplier": 5,
+    "tick": 1.0,
+    "main_contract": "L2605",
+    "last_updated": "2025-12-11"
+  },
+  "LH": {
+    "name": "生猪",
+    "exchange": "DCE",
+    "multiplier": 16,
+    "tick": 5.0,
+    "main_contract": "LH2603",
+    "last_updated": "2025-12-11"
+  },
+  "LR": {
+    "name": "晚籼稻",
+    "exchange": "CZCE",
+    "multiplier": 20,
+    "tick": 1.0,
+    "main_contract": "LR0",
+    "last_updated": "2025-12-11"
+  },
+  "LU": {
+    "name": "低硫燃料油",
+    "exchange": "UNKNOWN",
+    "multiplier": 10,
+    "tick": 1.0,
+    "main_contract": "LU0",
+    "last_updated": "2025-12-11"
+  },
+  "M": {
+    "name": "豆粕",
+    "exchange": "DCE",
+    "multiplier": 10,
+    "tick": 1.0,
+    "main_contract": "M2605",
+    "last_updated": "2025-12-11"
+  },
+  "MA": {
+    "name": "甲醇",
+    "exchange": "CZCE",
+    "multiplier": 10,
+    "tick": 1.0,
+    "main_contract": "MA605",
+    "last_updated": "2025-12-11"
+  },
+  "NI": {
+    "name": "镍",
+    "exchange": "SHFE",
+    "multiplier": 1,
+    "tick": 10.0,
+    "main_contract": "NI2601",
+    "last_updated": "2025-12-11"
+  },
+  "NR": {
+    "name": "20号胶",
+    "exchange": "UNKNOWN",
+    "multiplier": 10,
+    "tick": 5.0,
+    "main_contract": "NR0",
+    "last_updated": "2025-12-11"
+  },
+  "OI": {
+    "name": "菜籽油",
+    "exchange": "CZCE",
+    "multiplier": 10,
+    "tick": 1.0,
+    "main_contract": "OI605",
+    "last_updated": "2025-12-11"
+  },
+  "P": {
+    "name": "棕榈油",
+    "exchange": "DCE",
+    "multiplier": 10,
+    "tick": 2.0,
+    "main_contract": "P2605",
+    "last_updated": "2025-12-11"
+  },
+  "PB": {
+    "name": "铅",
+    "exchange": "SHFE",
+    "multiplier": 5,
+    "tick": 5.0,
+    "main_contract": "PB2602",
+    "last_updated": "2025-12-14"
+  },
+  "PF": {
+    "name": "短纤",
+    "exchange": "CZCE",
+    "multiplier": 5,
+    "tick": 2.0,
+    "main_contract": "PF602",
+    "last_updated": "2025-12-11"
+  },
+  "PG": {
+    "name": "液化石油气",
+    "exchange": "DCE",
+    "multiplier": 20,
+    "tick": 1.0,
+    "main_contract": "PG2602",
+    "last_updated": "2025-12-11"
+  },
+  "PK": {
+    "name": "花生",
+    "exchange": "CZCE",
+    "multiplier": 5,
+    "tick": 2.0,
+    "main_contract": "PK0",
+    "last_updated": "2025-12-11"
+  },
+  "PM": {
+    "name": "普麦",
+    "exchange": "CZCE",
+    "multiplier": 50,
+    "tick": 1.0,
+    "main_contract": "PM0",
+    "last_updated": "2025-12-11"
+  },
+  "PP": {
+    "name": "聚丙烯",
+    "exchange": "DCE",
+    "multiplier": 5,
+    "tick": 1.0,
+    "main_contract": "PP2605",
+    "last_updated": "2025-12-11"
+  },
+  "PX": {
+    "name": "对二甲苯",
+    "exchange": "CZCE",
+    "multiplier": 5,
+    "tick": 2.0,
+    "main_contract": "PX603",
+    "last_updated": "2025-12-11"
+  },
+  "RB": {
+    "name": "螺纹钢",
+    "exchange": "SHFE",
+    "multiplier": 10,
+    "tick": 1.0,
+    "main_contract": "RB2605",
+    "last_updated": "2025-12-11"
+  },
+  "RI": {
+    "name": "早籼稻",
+    "exchange": "CZCE",
+    "multiplier": 20,
+    "tick": 1.0,
+    "main_contract": "RI0",
+    "last_updated": "2025-12-11"
+  },
+  "RM": {
+    "name": "菜籽粕",
+    "exchange": "CZCE",
+    "multiplier": 10,
+    "tick": 1.0,
+    "main_contract": "RM605",
+    "last_updated": "2025-12-11"
+  },
+  "RR": {
+    "name": "粳米",
+    "exchange": "DCE",
+    "multiplier": 10,
+    "tick": 1.0,
+    "main_contract": "RR0",
+    "last_updated": "2025-12-11"
+  },
+  "RS": {
+    "name": "油菜籽",
+    "exchange": "CZCE",
+    "multiplier": 10,
+    "tick": 1.0,
+    "main_contract": "RS0",
+    "last_updated": "2025-12-11"
+  },
+  "RU": {
+    "name": "天然橡胶",
+    "exchange": "SHFE",
+    "multiplier": 10,
+    "tick": 5.0,
+    "main_contract": "RU2605",
+    "last_updated": "2025-12-11"
+  },
+  "SA": {
+    "name": "纯碱",
+    "exchange": "CZCE",
+    "multiplier": 20,
+    "tick": 1.0,
+    "main_contract": "SA605",
+    "last_updated": "2025-12-11"
+  },
+  "SC": {
+    "name": "原油",
+    "exchange": "UNKNOWN",
+    "multiplier": 1000,
+    "tick": 0.1,
+    "main_contract": "SC0",
+    "last_updated": "2025-12-11"
+  },
+  "SF": {
+    "name": "硅铁",
+    "exchange": "CZCE",
+    "multiplier": 5,
+    "tick": 2.0,
+    "main_contract": "SF603",
+    "last_updated": "2025-12-11"
+  },
+  "SH": {
+    "name": "烧碱",
+    "exchange": "CZCE",
+    "multiplier": 30,
+    "tick": 1.0,
+    "main_contract": "SH603",
+    "last_updated": "2025-12-11"
+  },
+  "SI": {
+    "name": "工业硅",
+    "exchange": "GFEX",
+    "multiplier": 5,
+    "tick": 5.0,
+    "main_contract": "SI2605",
+    "last_updated": "2025-12-11"
+  },
+  "SM": {
+    "name": "锰硅",
+    "exchange": "CZCE",
+    "multiplier": 5,
+    "tick": 2.0,
+    "main_contract": "SM603",
+    "last_updated": "2025-12-11"
+  },
+  "SN": {
+    "name": "锡",
+    "exchange": "SHFE",
+    "multiplier": 1,
+    "tick": 10.0,
+    "main_contract": "SN2601",
+    "last_updated": "2025-12-11"
+  },
+  "SP": {
+    "name": "纸浆",
+    "exchange": "SHFE",
+    "multiplier": 10,
+    "tick": 2.0,
+    "main_contract": "SP2605",
+    "last_updated": "2025-12-11"
+  },
+  "SR": {
+    "name": "白糖",
+    "exchange": "CZCE",
+    "multiplier": 10,
+    "tick": 1.0,
+    "main_contract": "SR605",
+    "last_updated": "2025-12-11"
+  },
+  "SS": {
+    "name": "不锈钢",
+    "exchange": "SHFE",
+    "multiplier": 5,
+    "tick": 5.0,
+    "main_contract": "SS2602",
+    "last_updated": "2025-12-11"
+  },
+  "T": {
+    "name": "10年期国债",
+    "exchange": "CFFEX",
+    "multiplier": 10000,
+    "tick": 0.005,
+    "main_contract": "T0",
+    "last_updated": "2025-12-11"
+  },
+  "TA": {
+    "name": "PTA",
+    "exchange": "CZCE",
+    "multiplier": 5,
+    "tick": 2.0,
+    "main_contract": "TA605",
+    "last_updated": "2025-12-11"
+  },
+  "TF": {
+    "name": "5年期国债",
+    "exchange": "CFFEX",
+    "multiplier": 10000,
+    "tick": 0.005,
+    "main_contract": "TF0",
+    "last_updated": "2025-12-11"
+  },
+  "TL": {
+    "name": "30年期国债",
+    "exchange": "CFFEX",
+    "multiplier": 10000,
+    "tick": 0.01,
+    "main_contract": "TL0",
+    "last_updated": "2025-12-11"
+  },
+  "TS": {
+    "name": "2年期国债",
+    "exchange": "CFFEX",
+    "multiplier": 20000,
+    "tick": 0.002,
+    "main_contract": "TS0",
+    "last_updated": "2025-12-11"
+  },
+  "UR": {
+    "name": "尿素",
+    "exchange": "CZCE",
+    "multiplier": 20,
+    "tick": 1.0,
+    "main_contract": "UR605",
+    "last_updated": "2025-12-14"
+  },
+  "V": {
+    "name": "聚氯乙烯",
+    "exchange": "DCE",
+    "multiplier": 5,
+    "tick": 1.0,
+    "main_contract": "V2601",
+    "last_updated": "2025-12-11"
+  },
+  "WH": {
+    "name": "强麦",
+    "exchange": "CZCE",
+    "multiplier": 20,
+    "tick": 1.0,
+    "main_contract": "WH0",
+    "last_updated": "2025-12-11"
+  },
+  "WR": {
+    "name": "线材",
+    "exchange": "SHFE",
+    "multiplier": 10,
+    "tick": 1.0,
+    "main_contract": "WR2601",
+    "last_updated": "2025-12-11"
+  },
+  "Y": {
+    "name": "豆油",
+    "exchange": "DCE",
+    "multiplier": 10,
+    "tick": 2.0,
+    "main_contract": "Y2605",
+    "last_updated": "2025-12-11"
+  },
+  "ZC": {
+    "name": "动力煤",
+    "exchange": "CZCE",
+    "multiplier": 100,
+    "tick": 0.2,
+    "main_contract": "ZC0",
+    "last_updated": "2025-12-11"
+  },
+  "ZN": {
+    "name": "锌",
+    "exchange": "SHFE",
+    "multiplier": 5,
+    "tick": 5.0,
+    "main_contract": "ZN2601",
+    "last_updated": "2025-12-11"
+  }
+}
