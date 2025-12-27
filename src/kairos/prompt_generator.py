@@ -13,6 +13,8 @@ from kairos.prompt_formatter import (
     format_variety_list,
     format_switch_list,
     replace_tracking_config,
+    replace_positions_config,
+    parse_user_positions,
 )
 
 TEMPLATE_PATH = Path(__file__).parent.parent.parent / "docs" / "deep_research_template.md"
@@ -46,8 +48,14 @@ def generate_deep_research_prompt(results: dict, output_dir: str) -> str | None:
     date_str = datetime.now().strftime("%Y-%m-%d")
     template = template.replace("[请在此处填写日期，例如：2025-12-11]", date_str)
 
+    # 解析用户持仓信息（在替换前）
+    positions = parse_user_positions(template)
+
     # 替换 TRACKING_CONFIG 区域为包含实时数据的表格
     template = replace_tracking_config(template, decisions)
+
+    # 替换 USER_POSITIONS 区域
+    template = replace_positions_config(template, decisions)
 
     # 统计
     longs = [d for d in decisions if d["decision"]["direction"] == "做多"]
@@ -57,6 +65,9 @@ def generate_deep_research_prompt(results: dict, output_dir: str) -> str | None:
     long_list = format_variety_list(decisions, "做多")
     short_list = format_variety_list(decisions, "做空")
     switch_list = format_switch_list(switches)
+
+    # 生成持仓提醒（如果有持仓）
+    position_reminder = _build_position_reminder(positions) if positions else ""
 
     # 构建提示词
     prompt = f"""# 期货市场深度分析请求 - {date_str}
@@ -69,7 +80,7 @@ def generate_deep_research_prompt(results: dict, output_dir: str) -> str | None:
 {short_list}
 ### 移仓提示
 {switch_list}
-
+{position_reminder}
 ---
 
 ## 请基于以上技术信号，按照以下模板进行深度分析：
@@ -85,6 +96,22 @@ def generate_deep_research_prompt(results: dict, output_dir: str) -> str | None:
 
     print(f"✅ Deep Research 提示词已生成: {output_path}")
     return output_path
+
+
+def _build_position_reminder(positions: list) -> str:
+    """构建持仓提醒文本"""
+    if not positions:
+        return ""
+
+    lines = ["\n### ⚠️ 用户当前持仓提醒\n"]
+    lines.append("**请在分析时特别关注以下持仓，并给出明确的操作建议：**\n")
+    for pos in positions:
+        contract = pos.get("contract", "")
+        direction = pos.get("direction", "")
+        avg_price = pos.get("avg_price", 0)
+        lines.append(f"- **{contract}** {direction} @ {avg_price}")
+    lines.append("\n对于每个持仓，请分析：持有/止盈/止损/加仓/减仓，并给出理由和关键价位。\n")
+    return "\n".join(lines)
 
 
 def regenerate_prompt_from_file(date_str: str | None = None, force: bool = False) -> str | None:
@@ -144,11 +171,17 @@ def regenerate_prompt_from_file(date_str: str | None = None, force: bool = False
     # 加载模板
     template = TEMPLATE_PATH.read_text(encoding="utf-8")
 
+    # 解析用户持仓信息（在替换前）
+    positions = parse_user_positions(template)
+
     # 替换模板中的日期占位符
     template = template.replace("[请在此处填写日期，例如：2025-12-11]", date_str)
 
     # 替换 TRACKING_CONFIG 区域为包含实时数据的表格
     template = replace_tracking_config(template, decisions)
+
+    # 替换 USER_POSITIONS 区域
+    template = replace_positions_config(template, decisions)
 
     # 统计
     longs = [d for d in decisions if d["decision"]["direction"] == "做多"]
@@ -158,6 +191,9 @@ def regenerate_prompt_from_file(date_str: str | None = None, force: bool = False
     long_list = format_variety_list(decisions, "做多")
     short_list = format_variety_list(decisions, "做空")
     switch_list = format_switch_list(switches)
+
+    # 生成持仓提醒（如果有持仓）
+    position_reminder = _build_position_reminder(positions) if positions else ""
 
     # 构建提示词
     prompt = f"""# 期货市场深度分析请求 - {date_str}
@@ -170,7 +206,7 @@ def regenerate_prompt_from_file(date_str: str | None = None, force: bool = False
 {short_list}
 ### 移仓提示
 {switch_list}
-
+{position_reminder}
 ---
 
 ## 请基于以上技术信号，按照以下模板进行深度分析：
@@ -187,6 +223,8 @@ def regenerate_prompt_from_file(date_str: str | None = None, force: bool = False
     print(f"   📊 做多信号: {len(longs)} 个")
     print(f"   📊 做空信号: {len(shorts)} 个")
     print(f"   📦 移仓提示: {len(switches)} 个")
+    if positions:
+        print(f"   💼 用户持仓: {len(positions)} 个")
 
     return str(output_path)
 
