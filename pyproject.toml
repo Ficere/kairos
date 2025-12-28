@@ -45,3 +45,11 @@ packages = ["src/kairos"]
 [tool.hatch.build.targets.sdist]
 include = ["src/kairos"]
 
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

@@ -1,6 +1,7 @@
-"""高级技术指标计算模块"""
+"""技术指标计算模块"""
 import pandas as pd
 import numpy as np
+from kairos.futures.indicators_advanced import calc_obv, calc_adx
 
 
 def calc_basic_indicators(df: pd.DataFrame) -> dict:
@@ -88,11 +89,11 @@ def calc_boll(close: pd.Series, period: int = 20, std_dev: int = 2) -> dict:
     std = close.rolling(period).std()
     upper = mid + std_dev * std
     lower = mid - std_dev * std
-    
+
     price = float(close.iloc[-1])
     upper_val, mid_val, lower_val = float(upper.iloc[-1]), float(mid.iloc[-1]), float(lower.iloc[-1])
     band_width = (upper_val - lower_val) / mid_val * 100
-    
+
     if price > upper_val:
         position = "above_upper"
     elif price < lower_val:
@@ -101,7 +102,7 @@ def calc_boll(close: pd.Series, period: int = 20, std_dev: int = 2) -> dict:
         position = "upper_half"
     else:
         position = "lower_half"
-    
+
     return {"upper": round(upper_val, 2), "mid": round(mid_val, 2), "lower": round(lower_val, 2),
             "bandwidth": round(band_width, 2), "position": position}
 
@@ -110,23 +111,33 @@ def calc_all_indicators(df: pd.DataFrame) -> dict:
     """计算所有技术指标"""
     if df.empty or len(df) < 20:
         return {}
-    
+
     close = df['close'].astype(float)
     high = df['high'].astype(float)
     low = df['low'].astype(float)
-    
+    volume = df['volume'].astype(float) if 'volume' in df.columns else None
+
     ma5 = close.rolling(5).mean().iloc[-1]
     ma10 = close.rolling(10).mean().iloc[-1]
     ma20 = close.rolling(20).mean().iloc[-1]
-    
+
     tr = pd.concat([high - low, abs(high - close.shift(1)), abs(low - close.shift(1))], axis=1).max(axis=1)
     atr = float(tr.rolling(14).mean().iloc[-1])
-    
-    return {
+
+    result = {
         "ma": {"ma5": round(float(ma5), 2), "ma10": round(float(ma10), 2), "ma20": round(float(ma20), 2)},
         "atr": round(atr, 2),
         "trend": "bullish" if ma5 > ma10 > ma20 else "bearish" if ma5 < ma10 < ma20 else "sideways",
-        "macd": calc_macd(close), "kdj": calc_kdj(high, low, close),
-        "rsi": calc_rsi(close), "boll": calc_boll(close),
+        "macd": calc_macd(close),
+        "kdj": calc_kdj(high, low, close),
+        "rsi": calc_rsi(close),
+        "boll": calc_boll(close),
+        "adx": calc_adx(high, low, close),
     }
+
+    # 成交量指标（如果有成交量数据）
+    if volume is not None and volume.sum() > 0:
+        result["obv"] = calc_obv(close, volume)
+
+    return result
 

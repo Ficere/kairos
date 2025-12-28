@@ -16,79 +16,49 @@ from kairos.prompt_formatter import (
     replace_positions_config,
     parse_user_positions,
 )
+from kairos.prompt_indicators import INDICATOR_DOCS, format_variety_compact
 
 TEMPLATE_PATH = Path(__file__).parent.parent.parent / "docs" / "deep_research_template.md"
 
 
-def generate_deep_research_prompt(results: dict, output_dir: str) -> str | None:
-    """生成 Deep Research 提示词
-    
-    Args:
-        results: 分析结果字典，包含 decisions 和 switches
-        output_dir: 输出目录
-    
-    Returns:
-        生成的文件路径，失败返回 None
-    """
-    decisions = results.get("decisions", [])
-    switches = results.get("switches", [])
-    
-    if not decisions:
-        print("⚠️ 无分析结果，跳过生成 Deep Research 提示词")
-        return None
-    
-    # 加载模板
-    if not TEMPLATE_PATH.exists():
-        print(f"⚠️ 模板文件不存在: {TEMPLATE_PATH}")
-        return None
-    
+def _process_template(date_str: str, decisions: list, switches: list) -> str:
+    """处理模板并生成提示词内容"""
     template = TEMPLATE_PATH.read_text(encoding="utf-8")
-
-    # 替换模板中的日期占位符
-    date_str = datetime.now().strftime("%Y-%m-%d")
-    template = template.replace("[请在此处填写日期，例如：2025-12-11]", date_str)
-
-    # 解析用户持仓信息（在替换前）
     positions = parse_user_positions(template)
 
-    # 替换 TRACKING_CONFIG 区域为包含实时数据的表格
+    template = template.replace("[请在此处填写日期，例如：2025-12-11]", date_str)
     template = replace_tracking_config(template, decisions)
-
-    # 替换 USER_POSITIONS 区域
     template = replace_positions_config(template, decisions)
 
-    # 统计
     longs = [d for d in decisions if d["decision"]["direction"] == "做多"]
     shorts = [d for d in decisions if d["decision"]["direction"] == "做空"]
 
-    # 生成品种列表
-    long_list = format_variety_list(decisions, "做多")
-    short_list = format_variety_list(decisions, "做空")
-    switch_list = format_switch_list(switches)
+    return _build_prompt(
+        date_str, longs, shorts,
+        format_variety_list(decisions, "做多"),
+        format_variety_list(decisions, "做空"),
+        format_switch_list(switches),
+        _build_position_reminder(positions) if positions else "",
+        template, decisions
+    )
 
-    # 生成持仓提醒（如果有持仓）
-    position_reminder = _build_position_reminder(positions) if positions else ""
 
-    # 构建提示词
-    prompt = f"""# 期货市场深度分析请求 - {date_str}
+def generate_deep_research_prompt(results: dict, output_dir: str) -> str | None:
+    """生成 Deep Research 提示词"""
+    decisions = results.get("decisions", [])
+    switches = results.get("switches", [])
 
-## 技术分析信号汇总
+    if not decisions:
+        print("⚠️ 无分析结果，跳过生成 Deep Research 提示词")
+        return None
 
-### 做多信号品种（{len(longs)}个）
-{long_list}
-### 做空信号品种（{len(shorts)}个）
-{short_list}
-### 移仓提示
-{switch_list}
-{position_reminder}
----
+    if not TEMPLATE_PATH.exists():
+        print(f"⚠️ 模板文件不存在: {TEMPLATE_PATH}")
+        return None
 
-## 请基于以上技术信号，按照以下模板进行深度分析：
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    prompt = _process_template(date_str, decisions, switches)
 
-{template}
-"""
-    
-    # 保存文件到 plans/ 根目录
     os.makedirs("plans", exist_ok=True)
     output_path = os.path.join("plans", f"deep_research_{date_str}.md")
     with open(output_path, "w", encoding="utf-8") as f:
@@ -114,17 +84,52 @@ def _build_position_reminder(positions: list) -> str:
     return "\n".join(lines)
 
 
+def _build_indicator_details(decisions: list, direction: str, max_items: int = 5) -> str:
+    """为指定方向的品种构建紧凑指标摘要"""
+    filtered = [d for d in decisions if d["decision"]["direction"] == direction]
+    if not filtered:
+        return ""
+    sorted_items = sorted(filtered, key=lambda x: -x["scores"]["total"])[:max_items]
+    return "\n".join(format_variety_compact(d) for d in sorted_items)
+
+
+def _build_prompt(
+    date_str: str, longs: list, shorts: list,
+    long_list: str, short_list: str, switch_list: str,
+    position_reminder: str, template: str, decisions: list
+) -> str:
+    """构建完整的提示词内容"""
+    long_details = _build_indicator_details(decisions, "做多", 5)
+    short_details = _build_indicator_details(decisions, "做空", 5)
+
+    return f"""# 期货市场深度分析请求 - {date_str}
+
+{INDICATOR_DOCS}
+## 技术分析信号汇总
+
+### 做多信号（{len(longs)}个）
+{long_list}
+### 做空信号（{len(shorts)}个）
+{short_list}
+### 移仓提示
+{switch_list}
+{position_reminder}
+## 📈 重点品种指标详情
+
+**做多前5**:
+{long_details if long_details else "无"}
+
+**做空前5**:
+{short_details if short_details else "无"}
+
+---
+
+{template}
+"""
+
+
 def regenerate_prompt_from_file(date_str: str | None = None, force: bool = False) -> str | None:
-    """从已有的分析结果文件重新生成 Deep Research 提示词
-
-    Args:
-        date_str: 日期字符串 YYYY-MM-DD，如果为 None 则使用最新日期
-        force: 是否强制覆盖已存在的文件
-
-    Returns:
-        生成的文件路径，失败返回 None
-    """
-    # 确定日期
+    """从已有的分析结果文件重新生成 Deep Research 提示词"""
     if date_str is None:
         date_str = get_latest_analysis_date()
         if date_str is None:
@@ -132,22 +137,16 @@ def regenerate_prompt_from_file(date_str: str | None = None, force: bool = False
             print("   请先运行 'kairos-analyze --all' 生成分析结果")
             return None
         print(f"📅 使用最新分析结果: {date_str}")
-    else:
-        # 验证日期格式
-        if not validate_date_format(date_str):
-            print(f"❌ 日期格式错误: {date_str}")
-            print("   正确格式: YYYY-MM-DD (例如: 2025-12-15)")
-            return None
+    elif not validate_date_format(date_str):
+        print(f"❌ 日期格式错误: {date_str}，正确格式: YYYY-MM-DD")
+        return None
 
-    # 检查输出文件是否已存在
     output_path = PLANS_DIR / f"deep_research_{date_str}.md"
     if output_path.exists() and not force:
         response = input(f"⚠️  文件已存在: {output_path}\n   是否覆盖? (y/N): ").strip().lower()
         if response not in ('y', 'yes'):
-            print("❌ 已取消")
             return None
 
-    # 加载分析结果
     print(f"📂 加载分析结果: {date_str}")
     results = load_analysis_results(date_str)
     if results is None:
@@ -160,71 +159,23 @@ def regenerate_prompt_from_file(date_str: str | None = None, force: bool = False
     print(f"   ✓ 加载了 {len(decisions)} 个决策记录")
     print(f"   ✓ 加载了 {len(switches)} 个移仓提示")
 
-    # 检查模板文件
     if not TEMPLATE_PATH.exists():
         print(f"❌ 模板文件不存在: {TEMPLATE_PATH}")
         return None
 
-    # 生成提示词
     print(f"🔄 重新生成 Deep Research 提示词...")
+    prompt = _process_template(date_str, decisions, switches)
 
-    # 加载模板
-    template = TEMPLATE_PATH.read_text(encoding="utf-8")
-
-    # 解析用户持仓信息（在替换前）
-    positions = parse_user_positions(template)
-
-    # 替换模板中的日期占位符
-    template = template.replace("[请在此处填写日期，例如：2025-12-11]", date_str)
-
-    # 替换 TRACKING_CONFIG 区域为包含实时数据的表格
-    template = replace_tracking_config(template, decisions)
-
-    # 替换 USER_POSITIONS 区域
-    template = replace_positions_config(template, decisions)
-
-    # 统计
-    longs = [d for d in decisions if d["decision"]["direction"] == "做多"]
-    shorts = [d for d in decisions if d["decision"]["direction"] == "做空"]
-
-    # 生成品种列表
-    long_list = format_variety_list(decisions, "做多")
-    short_list = format_variety_list(decisions, "做空")
-    switch_list = format_switch_list(switches)
-
-    # 生成持仓提醒（如果有持仓）
-    position_reminder = _build_position_reminder(positions) if positions else ""
-
-    # 构建提示词
-    prompt = f"""# 期货市场深度分析请求 - {date_str}
-
-## 技术分析信号汇总
-
-### 做多信号品种（{len(longs)}个）
-{long_list}
-### 做空信号品种（{len(shorts)}个）
-{short_list}
-### 移仓提示
-{switch_list}
-{position_reminder}
----
-
-## 请基于以上技术信号，按照以下模板进行深度分析：
-
-{template}
-"""
-
-    # 保存文件
     os.makedirs(PLANS_DIR, exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(prompt)
 
+    longs = [d for d in decisions if d["decision"]["direction"] == "做多"]
+    shorts = [d for d in decisions if d["decision"]["direction"] == "做空"]
+
     print(f"✅ Deep Research 提示词已重新生成: {output_path}")
-    print(f"   📊 做多信号: {len(longs)} 个")
-    print(f"   📊 做空信号: {len(shorts)} 个")
+    print(f"   📊 做多信号: {len(longs)} 个 | 做空信号: {len(shorts)} 个")
     print(f"   📦 移仓提示: {len(switches)} 个")
-    if positions:
-        print(f"   💼 用户持仓: {len(positions)} 个")
 
     return str(output_path)
 

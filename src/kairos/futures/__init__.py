@@ -3,6 +3,7 @@
 from kairos.futures.config import load_contracts, CONTRACTS
 from kairos.futures.data_fetcher import get_historical_data
 from kairos.futures.indicators import calc_all_indicators
+from kairos.futures.indicators_advanced import calc_obv, calc_adx
 from kairos.futures.divergence import detect_divergence
 from kairos.futures.display import get_daily_output_dir
 
@@ -11,6 +12,8 @@ __all__ = [
     "CONTRACTS",
     "get_historical_data",
     "calc_all_indicators",
+    "calc_obv",
+    "calc_adx",
     "detect_divergence",
     "get_daily_output_dir",
 ]

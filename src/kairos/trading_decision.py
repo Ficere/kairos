@@ -4,6 +4,9 @@ import os
 from datetime import datetime
 from kairos.futures.config import CONTRACTS
 from kairos.futures.display import get_daily_output_dir
+from kairos.scoring.engine import score_technical_v2, calc_signal_consistency
+from kairos.scoring.config import get_market_regime
+from kairos.scoring.adaptive import score_with_adaptive_weights
 
 
 def load_json(path: str) -> dict | None:
@@ -15,60 +18,8 @@ def load_json(path: str) -> dict | None:
 
 
 def score_technical(indicators: dict) -> dict:
-    """技术面评分（0-100）"""
-    score, signals = 50, []  # 基准分
-
-    trend = indicators.get("trend", "sideways")
-    if trend == "bullish":
-        score += 15
-        signals.append("均线多头排列 +15")
-    elif trend == "bearish":
-        score -= 15
-        signals.append("均线空头排列 -15")
-
-    macd = indicators.get("macd", {})
-    macd_signal = macd.get("signal", "")
-    if macd_signal == "golden_cross":
-        score += 10
-        signals.append("MACD金叉 +10")
-    elif macd_signal == "death_cross":
-        score -= 10
-        signals.append("MACD死叉 -10")
-    elif macd_signal == "bullish":
-        score += 5
-        signals.append("MACD多头 +5")
-    elif macd_signal == "bearish":
-        score -= 5
-        signals.append("MACD空头 -5")
-
-    kdj = indicators.get("kdj", {})
-    kdj_zone = kdj.get("zone", "")
-    if kdj_zone == "oversold":
-        score += 10
-        signals.append("KDJ超卖 +10")
-    elif kdj_zone == "overbought":
-        score -= 10
-        signals.append("KDJ超买 -10")
-
-    rsi = indicators.get("rsi", {})
-    rsi_zone = rsi.get("zone", "")
-    if rsi_zone == "oversold":
-        score += 10
-        signals.append("RSI超卖 +10")
-    elif rsi_zone == "overbought":
-        score -= 10
-        signals.append("RSI超买 -10")
-
-    boll = indicators.get("boll", {})
-    boll_pos = boll.get("position", "")
-    if boll_pos == "below_lower":
-        score += 5
-        signals.append("价格破布林下轨 +5")
-    elif boll_pos == "above_upper":
-        score -= 5
-        signals.append("价格破布林上轨 -5")
-
-    return {"score": max(0, min(100, score)), "signals": signals}
+    """技术面评分（0-100）- 使用自适应权重评分引擎"""
+    return score_with_adaptive_weights(indicators)
 
 
 def calc_entry_stop_target(tech: dict, macro: dict, direction: str) -> dict:
@@ -100,21 +51,43 @@ def decide_confidence(score: int) -> str:
 def extract_indicators(tech: dict) -> dict:
     """提取详细技术指标数值"""
     ind = tech.get("indicators", {})
-    macd, kdj, rsi, boll, ma = ind.get("macd", {}), ind.get("kdj", {}), ind.get("rsi", {}), ind.get("boll", {}), ind.get("ma", {})
+    macd = ind.get("macd", {})
+    kdj = ind.get("kdj", {})
+    rsi = ind.get("rsi", {})
+    boll = ind.get("boll", {})
+    ma = ind.get("ma", {})
+    adx = ind.get("adx", {})
+    obv = ind.get("obv", {})
     price = tech.get("latest", {}).get("price", 0)
-    return {
+
+    result = {
         "macd": {"dif": macd.get("dif", 0), "dea": macd.get("dea", 0), "macd": macd.get("macd", 0)},
         "kdj": {"k": kdj.get("k", 0), "d": kdj.get("d", 0), "j": kdj.get("j", 0)},
         "rsi": {"value": rsi.get("rsi", 0)},
         "boll": {"upper": boll.get("upper", 0), "mid": boll.get("mid", 0), "lower": boll.get("lower", 0),
                  "current_price": price, "position": boll.get("position", "")},
         "ma": {"ma5": ma.get("ma5", 0), "ma10": ma.get("ma10", 0), "ma20": ma.get("ma20", 0)},
+        "adx": {"adx": adx.get("adx", 0), "plus_di": adx.get("plus_di", 0),
+                "minus_di": adx.get("minus_di", 0), "strength": adx.get("strength", "weak")},
         "divergence": tech.get("divergence", {"type": "无背离", "confidence": "低", "indicator": "", "description": ""}),
     }
 
+    # 添加 OBV（如果存在）
+    if obv:
+        result["obv"] = {"obv": obv.get("obv", 0), "signal": obv.get("signal", "")}
+
+    # 添加信号一致性分析
+    consistency = calc_signal_consistency(ind)
+    result["signal_consistency"] = consistency
+
+    # 添加市场状态
+    result["market_regime"] = get_market_regime(ind)
+
+    return result
+
 
 def make_decision(contract_id: str) -> dict:
-    """生成交易决策"""
+    """生成交易决策 - 使用自适应评分和增强置信度"""
     output_dir = get_daily_output_dir()
     config = CONTRACTS.get(contract_id, {})
     tech = load_json(os.path.join(output_dir, f"{contract_id}_technical.json"))
@@ -122,21 +95,28 @@ def make_decision(contract_id: str) -> dict:
     if not tech:
         return {"error": f"未找到技术分析数据，请先运行分析"}
 
+    # 使用自适应评分（包含置信度和量价确认）
     tech_result = score_technical(tech.get("indicators", {}))
-    tech_score, signals = tech_result["score"], tech_result["signals"]
+    tech_score = tech_result["score"]
+    signals = tech_result["signals"]
+    confidence = tech_result.get("confidence", {})
+
     macro_score = macro.get("macro_score", 50) if macro else 50
     total_score = int(tech_score * 0.6 + macro_score * 0.4)
 
     direction = "做多" if total_score >= 60 else "做空" if total_score <= 40 else "观望"
     levels = calc_entry_stop_target(tech, macro, direction)
 
+    # 背离信号
     divergence = tech.get("divergence", {})
     if divergence and divergence.get("type") != "无背离":
         div_type, div_ind = divergence.get("type", ""), divergence.get("indicator", "")
         adj = -10 if div_type == "顶背离" else 10 if div_type == "底背离" else 0
         signals.append(f"检测到{div_type}({div_ind}) {adj:+d}")
 
-    conf_score = total_score if direction == "做多" else (100 - total_score) if direction == "做空" else 0
+    # 使用增强置信度
+    conf_level = confidence.get("level", "观望") + f"({confidence.get('position_pct', '0%')})"
+
     main = config.get("main_contract", contract_id)
     display = main if main and not main.endswith("0") else contract_id
 
@@ -146,7 +126,9 @@ def make_decision(contract_id: str) -> dict:
         "scores": {"technical": tech_score, "macro": macro_score, "total": total_score},
         "technical_indicators": extract_indicators(tech), "technical_signals": signals,
         "decision": {"direction": direction, "entry_range": levels["entry_range"],
-                     "target": levels["target"], "stop_loss": levels["stop_loss"], "confidence": decide_confidence(conf_score)},
+                     "target": levels["target"], "stop_loss": levels["stop_loss"], "confidence": conf_level},
+        "confidence_details": confidence,  # 新增：详细置信度信息
+        "market_regime": tech_result.get("market_regime", "neutral"),  # 新增：市场状态
         "macro_factors": macro.get("key_factors", []) if macro else [],
         "risk_warning": macro.get("risk_warning", "") if macro else "",
     }
