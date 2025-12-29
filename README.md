@@ -42,6 +42,31 @@ uv run kairos-regenerate-prompt --force            # 强制覆盖已存在文件
 - 📊 **历史回顾**：基于历史分析结果重新生成提示词，验证模板改进效果
 - 🔄 **快速迭代**：无需重新运行耗时的数据获取和技术分析
 
+### Perplexity 宏观面分析
+
+系统支持调用 Perplexity API 进行宏观面和基本面分析，自动生成交易建议 CSV 文件。
+
+**配置 API Key**：
+
+在项目根目录创建 `.env` 文件，添加：
+
+```bash
+PERPLEXITY_API_KEY=pplx-xxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+**使用命令**：
+
+```bash
+uv run kairos-perplexity                           # 使用最新提示词
+uv run kairos-perplexity --date 2025-12-15         # 指定日期的提示词
+uv run kairos-perplexity --prompt-file PATH        # 指定提示词文件
+uv run kairos-perplexity --force                   # 强制覆盖已存在的 CSV
+```
+
+**输出文件**：`plans/perplexity_suggestion_YYYY-MM-DD.csv`，包含品种、方向、目标价、止损价、技术面/消息面简述等字段。
+
+**注意**：运行 `kairos-analyze --all` 时会自动调用 Perplexity 分析（如已配置 API Key）。
+
 ## Web 界面
 
 ```bash
