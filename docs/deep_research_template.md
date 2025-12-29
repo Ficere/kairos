@@ -16,7 +16,6 @@
   {"contract": "LC0", "name": "碳酸锂", "reason": "新能源板块核心品种"},
   {"contract": "J0", "name": "焦炭", "reason": "黑色系"},
   {"contract": "MA0", "name": "甲醇", "reason": "重要的化工原料"},
-  {"contract": "FG0", "name": "玻璃", "reason": "地产链品种"}
 ]
 ```
 <!-- TRACKING_CONFIG_END -->
@@ -30,8 +29,6 @@
 <!-- USER_POSITIONS_START -->
 ```json
 [
-  {"contract": "J2605", "direction": "做空", "avg_price": 1678.5, "quantity": 4, "open_time": "2025-12-18"},
-  {"contract": "LC2605", "direction": "做空", "avg_price": 103000}
 ]
 ```
 <!-- USER_POSITIONS_END -->
