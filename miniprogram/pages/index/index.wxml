@@ -25,10 +25,16 @@
     </view>
   </view>
 
-  <!-- 日期显示 -->
+  <!-- 日期选择 -->
   <view class="date-bar">
-    <text>📅 {{date}}  <text wx:if="{{generatedAt}}">🕐 {{generatedAt}}</text></text>
-    <text class="refresh-hint">下拉刷新数据</text>
+    <picker mode="selector" range="{{availableDates}}" value="{{selectedDateIndex}}" bindchange="onDateChange">
+      <view class="date-picker">
+        <text>📅 {{date}}</text>
+        <text class="picker-arrow">▼</text>
+      </view>
+    </picker>
+    <text wx:if="{{generatedAt}}">🕐 {{generatedAt}}</text>
+    <text class="refresh-hint">下拉刷新</text>
   </view>
 
   <!-- 加载中 -->

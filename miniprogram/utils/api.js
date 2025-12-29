@@ -55,10 +55,28 @@ function getDetail(contract, date) {
   return request(path)
 }
 
+/**
+ * 获取有 Perplexity 分析的日期列表
+ */
+function getPerplexityDates() {
+  return request('/api/perplexity/dates')
+}
+
+/**
+ * 获取 Perplexity 分析结果
+ */
+function getPerplexity(date) {
+  let path = '/api/perplexity'
+  if (date) path += `?date=${date}`
+  return request(path)
+}
+
 module.exports = {
   request,
   getResults,
   getDates,
-  getDetail
+  getDetail,
+  getPerplexityDates,
+  getPerplexity
 }
 

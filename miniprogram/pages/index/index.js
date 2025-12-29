@@ -10,23 +10,38 @@ Page({
     total: 0,
     filters: ['总计', '做多', '做空', '观望'],
     currentFilter: '总计',
-    stats: { long: 0, short: 0, wait: 0 }
+    stats: { long: 0, short: 0, wait: 0 },
+    availableDates: [],
+    selectedDateIndex: 0
   },
 
   onLoad() {
-    this.loadData()
+    this.loadDates()
   },
 
   onPullDownRefresh() {
     this.loadData().then(() => wx.stopPullDownRefresh())
   },
 
+  async loadDates() {
+    try {
+      const res = await api.getDates()
+      const dates = res.dates || []
+      this.setData({ availableDates: dates })
+      if (dates.length > 0) {
+        this.setData({ date: dates[0] })
+      }
+      this.loadData()
+    } catch (e) {
+      this.loadData()
+    }
+  },
+
   async loadData() {
     this.setData({ loading: true })
     try {
-      const res = await api.getResults(null, this.data.currentFilter)
+      const res = await api.getResults(this.data.date, this.data.currentFilter)
       const stats = this.calcStats(res.results)
-      // 提取时间部分（如 "2025-12-15 09:30" -> "09:30"）
       const generatedAt = res.generated_at && res.generated_at.includes(' ')
         ? res.generated_at.split(' ')[1] : ''
       this.setData({
@@ -42,6 +57,13 @@ Page({
       wx.showToast({ title: e.message || '加载失败', icon: 'none' })
       this.setData({ loading: false })
     }
+  },
+
+  onDateChange(e) {
+    const index = e.detail.value
+    const date = this.data.availableDates[index]
+    this.setData({ date: date, selectedDateIndex: index })
+    this.loadData()
   },
 
   calcStats(results) {

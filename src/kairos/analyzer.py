@@ -4,10 +4,12 @@ import os
 from datetime import datetime
 from kairos.futures.config import CONTRACTS, load_contracts
 from kairos.futures.display import get_daily_output_dir
-from kairos.futures.data_fetcher import get_historical_data
+from kairos.futures.data_fetcher import get_historical_data, get_multi_timeframe_data
 from kairos.futures.indicators import calc_all_indicators
+from kairos.futures.indicators_mtf import calc_multi_timeframe_indicators, get_timeframe_alignment
 from kairos.futures.divergence import detect_divergence
 from kairos.trading_decision import score_technical, calc_entry_stop_target, decide_confidence, extract_indicators
+from kairos.scoring.engine import score_multi_timeframe, score_divergence
 from kairos.contracts import update_contracts as update_contracts_impl, is_in_switch_period, get_switch_varieties, load_config
 
 
@@ -17,8 +19,13 @@ def run_step(step: int, total: int, name: str):
     print("-" * 50)
 
 
-def analyze_technical_single(contract_id: str) -> dict | None:
-    """分析单个品种的技术面"""
+def analyze_technical_single(contract_id: str, use_mtf: bool = False) -> dict | None:
+    """分析单个品种的技术面
+
+    Args:
+        contract_id: 合约ID
+        use_mtf: 是否使用多周期分析（可能较慢）
+    """
     config = CONTRACTS.get(contract_id)
     if not config:
         return None
@@ -34,7 +41,7 @@ def analyze_technical_single(contract_id: str) -> dict | None:
 
     divergence = detect_divergence(hist.tail(30), lookback=30) if len(hist) >= 30 else None
 
-    return {
+    result = {
         "contract": contract_id,
         "name": config["name"],
         "exchange": config["exchange"],
@@ -47,6 +54,22 @@ def analyze_technical_single(contract_id: str) -> dict | None:
             "low_20d": float(recent['low'].min()),
         },
     }
+
+    # 多周期分析（可选）
+    if use_mtf:
+        mtf_data = get_multi_timeframe_data(contract_id)
+        if mtf_data:
+            mtf_indicators = calc_multi_timeframe_indicators(mtf_data)
+            mtf_score = score_multi_timeframe(mtf_indicators)
+            alignment = get_timeframe_alignment(mtf_indicators)
+            result["mtf"] = {
+                "indicators": mtf_indicators,
+                "score": mtf_score,
+                "alignment": alignment,
+                "timeframes": list(mtf_data.keys())
+            }
+
+    return result
 
 
 def analyze_macro_single(contract_id: str, tech: dict) -> dict:
@@ -64,32 +87,61 @@ def get_display_contract(contract_id: str, config: dict) -> str:
 
 
 def make_decision_single(contract_id: str, tech: dict, macro: dict, contract_status: str = "稳定") -> dict:
-    """生成单个品种的交易决策"""
+    """生成单个品种的交易决策（支持多周期融合）"""
     config = CONTRACTS.get(contract_id, {})
-    tech_result = score_technical(tech.get("indicators", {}))
-    tech_score, signals = tech_result["score"], tech_result["signals"]
+
+    # 检查是否有多周期数据
+    mtf_data = tech.get("mtf")
+    if mtf_data and mtf_data.get("score"):
+        # 使用多周期融合评分
+        mtf_result = mtf_data["score"]
+        tech_score = mtf_result["score"]
+        signals = mtf_result.get("signals", [])[:5]  # 限制信号数量
+        # 添加多周期对齐信息
+        alignment = mtf_data.get("alignment", {})
+        if alignment.get("alignment_score", 0) > 0.5:
+            signals.insert(0, f"多周期共振↑({alignment.get('bullish_count', 0)}/{alignment.get('total', 0)})")
+        elif alignment.get("alignment_score", 0) < -0.5:
+            signals.insert(0, f"多周期共振↓({alignment.get('bearish_count', 0)}/{alignment.get('total', 0)})")
+    else:
+        # 回退到单周期评分
+        tech_result = score_technical(tech.get("indicators", {}))
+        tech_score, signals = tech_result["score"], tech_result["signals"]
+
     macro_score = macro.get("macro_score", 50)
     total_score = int(tech_score * 0.6 + macro_score * 0.4)
     direction = "做多" if total_score >= 60 else "做空" if total_score <= 40 else "观望"
     levels = calc_entry_stop_target(tech, macro, direction)
 
+    # 使用分级背离评分
     divergence = tech.get("divergence", {})
-    if divergence and divergence.get("type") != "无背离":
-        adj = -10 if divergence.get("type") == "顶背离" else 10 if divergence.get("type") == "底背离" else 0
-        signals.append(f"检测到{divergence.get('type')}({divergence.get('indicator', '')}) {adj:+d}")
+    div_score, div_signal = score_divergence(divergence)
+    if div_signal:
+        tech_score += div_score  # 背离调整技术评分
+        signals.append(div_signal)
 
     conf_score = total_score if direction == "做多" else (100 - total_score) if direction == "做空" else 0
     display = get_display_contract(contract_id, config)
 
-    return {
+    result = {
         "contract": contract_id, "display_contract": display, "name": config.get("name", contract_id),
-        "contract_status": contract_status,  # 新增：合约状态
+        "contract_status": contract_status,
         "timestamp": datetime.now().isoformat(), "current_price": tech.get("latest", {}).get("price", 0),
         "scores": {"technical": tech_score, "macro": macro_score, "total": total_score},
         "technical_indicators": extract_indicators(tech), "technical_signals": signals,
         "decision": {"direction": direction, "entry_range": levels["entry_range"], "target": levels["target"],
                      "stop_loss": levels["stop_loss"], "confidence": decide_confidence(conf_score)},
     }
+
+    # 添加多周期详情（如果有）
+    if mtf_data:
+        result["mtf_analysis"] = {
+            "timeframes": mtf_data.get("timeframes", []),
+            "alignment": mtf_data.get("alignment", {}),
+            "tf_scores": mtf_data.get("score", {}).get("timeframe_scores", {})
+        }
+
+    return result
 
 
 def save_json(path: str, data: dict):

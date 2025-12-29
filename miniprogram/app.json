@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/index/index",
+    "pages/perplexity/perplexity",
     "pages/detail/detail"
   ],
   "window": {
@@ -8,6 +9,22 @@
     "navigationBarBackgroundColor": "#2c3e50",
     "navigationBarTitleText": "Kairos 期货分析",
     "navigationBarTextStyle": "white"
+  },
+  "tabBar": {
+    "color": "#7f8c8d",
+    "selectedColor": "#3498db",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "技术分析"
+      },
+      {
+        "pagePath": "pages/perplexity/perplexity",
+        "text": "宏观面"
+      }
+    ]
   },
   "style": "v2",
   "sitemapLocation": "sitemap.json"

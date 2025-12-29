@@ -1,0 +1,94 @@
+<!-- Perplexity 宏观面分析 -->
+<view class="container">
+  <!-- 日期选择器 -->
+  <view class="date-picker-bar">
+    <text class="picker-label">📅 选择日期：</text>
+    <picker mode="selector" range="{{availableDates}}" bindchange="onDateChange">
+      <view class="picker-value">
+        <text>{{selectedDate || '暂无数据'}}</text>
+        <text class="arrow">▼</text>
+      </view>
+    </picker>
+    <text class="count-hint" wx:if="{{suggestions.length > 0}}">共 {{suggestions.length}} 条建议</text>
+  </view>
+
+  <!-- 提示信息 -->
+  <view class="hint-bar" wx:if="{{availableDates.length > 0}}">
+    <text>💡 仅显示有分析数据的日期</text>
+  </view>
+
+  <!-- 加载中 -->
+  <view class="loading" wx:if="{{loading}}">
+    <view class="loading-icon">⏳</view>
+    <text>加载中...</text>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty" wx:elif="{{suggestions.length === 0}}">
+    <view class="empty-icon">📭</view>
+    <text>暂无宏观面分析结果</text>
+    <text class="empty-hint">请等待 Perplexity 分析任务执行</text>
+  </view>
+
+  <!-- 建议列表 -->
+  <view class="suggestion-list" wx:else>
+    <view 
+      class="suggestion-item"
+      wx:for="{{suggestions}}" 
+      wx:key="品种"
+      data-index="{{index}}"
+      bindtap="onItemTap"
+    >
+      <view class="item-header">
+        <view class="variety-info">
+          <text class="variety-name">{{item.品种}}</text>
+          <text class="contract-code">{{item.合约}}</text>
+        </view>
+        <view class="tag {{item.方向.includes('做多') || item.方向.includes('偏多') ? 'tag-long' : (item.方向.includes('做空') || item.方向.includes('逢高') ? 'tag-short' : (item.方向.includes('止损') ? 'tag-warn' : 'tag-wait'))}}">
+          {{item.方向}}
+        </view>
+      </view>
+      
+      <view class="item-body">
+        <view class="item-row">
+          <text class="label">开仓区间</text>
+          <text class="value">{{item.参考开仓价区间}}</text>
+        </view>
+        <view class="item-row">
+          <text class="label">目标价</text>
+          <text class="value">{{item.目标价}}</text>
+        </view>
+        <view class="item-row">
+          <text class="label">止损价</text>
+          <text class="value stop">{{item.止损价}}</text>
+        </view>
+      </view>
+
+      <view class="item-footer">
+        <text class="rating">{{item.交易确定性评级}}</text>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 详情弹窗 -->
+  <view class="detail-mask" wx:if="{{showDetail}}" bindtap="onCloseDetail">
+    <view class="detail-popup" catchtap="">
+      <view class="detail-header">
+        <text class="detail-title">{{suggestions[selectedIndex].品种}} 详细分析</text>
+        <text class="close-btn" bindtap="onCloseDetail">✕</text>
+      </view>
+      <scroll-view scroll-y class="detail-content">
+        <view class="detail-section">
+          <text class="section-title">📈 技术面分析</text>
+          <text class="section-content">{{suggestions[selectedIndex].技术面简述 || '暂无'}}</text>
+        </view>
+        <view class="detail-section">
+          <text class="section-title">📰 消息面/基本面分析</text>
+          <text class="section-content">{{suggestions[selectedIndex].消息面简述 || '暂无'}}</text>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+</view>
+

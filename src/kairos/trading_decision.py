@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 from kairos.futures.config import CONTRACTS
 from kairos.futures.display import get_daily_output_dir
-from kairos.scoring.engine import score_technical_v2, calc_signal_consistency
+from kairos.scoring.engine import score_technical_v2, calc_signal_consistency, score_divergence
 from kairos.scoring.config import get_market_regime
 from kairos.scoring.adaptive import score_with_adaptive_weights
 
@@ -107,12 +107,12 @@ def make_decision(contract_id: str) -> dict:
     direction = "做多" if total_score >= 60 else "做空" if total_score <= 40 else "观望"
     levels = calc_entry_stop_target(tech, macro, direction)
 
-    # 背离信号
+    # 使用分级背离评分
     divergence = tech.get("divergence", {})
-    if divergence and divergence.get("type") != "无背离":
-        div_type, div_ind = divergence.get("type", ""), divergence.get("indicator", "")
-        adj = -10 if div_type == "顶背离" else 10 if div_type == "底背离" else 0
-        signals.append(f"检测到{div_type}({div_ind}) {adj:+d}")
+    div_score, div_signal = score_divergence(divergence)
+    if div_signal:
+        tech_score += div_score
+        signals.append(div_signal)
 
     # 使用增强置信度
     conf_level = confidence.get("level", "观望") + f"({confidence.get('position_pct', '0%')})"

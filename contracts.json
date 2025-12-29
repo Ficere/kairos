@@ -94,16 +94,20 @@
     "exchange": "SHFE",
     "multiplier": 5,
     "tick": 5.0,
-    "main_contract": "BR2602",
-    "last_updated": "2025-12-11"
+    "main_contract": "BR2603",
+    "last_updated": "2025-12-29",
+    "previous_contract": "BR2602",
+    "contract_switch_date": "2025-12-29"
   },
   "BU": {
     "name": "石油沥青",
     "exchange": "SHFE",
     "multiplier": 10,
     "tick": 1.0,
-    "main_contract": "BU2602",
-    "last_updated": "2025-12-11"
+    "main_contract": "BU2603",
+    "last_updated": "2025-12-29",
+    "previous_contract": "BU2602",
+    "contract_switch_date": "2025-12-29"
   },
   "C": {
     "name": "玉米",

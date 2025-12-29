@@ -3,7 +3,8 @@ import pytest
 from kairos.scoring.engine import (
     _score_trend, _score_macd, _score_momentum,
     _score_boll, _score_adx, _score_obv,
-    score_technical_v2, calc_signal_consistency
+    score_technical_v2, calc_signal_consistency,
+    score_multi_timeframe
 )
 
 
@@ -179,4 +180,68 @@ class TestCalcSignalConsistency:
         result = calc_signal_consistency(indicators)
         assert result["consistency"] == 0.0
         assert result["direction"] == "neutral"
+
+
+class TestScoreMultiTimeframe:
+    """多周期融合评分测试"""
+
+    def test_empty_input(self):
+        """空输入应返回默认分数"""
+        result = score_multi_timeframe({})
+        assert result["score"] == 50
+        assert result["signals"] == []
+
+    def test_single_timeframe(self):
+        """单一周期"""
+        mtf = {"1d": {"trend": "bullish", "macd": {"signal": "golden_cross"}}}
+        result = score_multi_timeframe(mtf)
+        assert result["score"] > 50
+        assert len(result["timeframe_scores"]) == 1
+
+    def test_multi_timeframe_bullish_alignment(self):
+        """多周期多头对齐应加分"""
+        mtf = {
+            "1h": {"trend": "bullish", "macd": {"signal": "bullish"}},
+            "4h": {"trend": "bullish", "macd": {"signal": "golden_cross"}},
+            "1d": {"trend": "bullish", "macd": {"signal": "bullish"}},
+        }
+        result = score_multi_timeframe(mtf)
+        assert result["score"] > 60
+        assert result["alignment"]["alignment_score"] > 0.5
+
+    def test_multi_timeframe_bearish_alignment(self):
+        """多周期空头对齐应减分"""
+        mtf = {
+            "1h": {"trend": "bearish", "macd": {"signal": "death_cross"}},
+            "4h": {"trend": "bearish", "macd": {"signal": "bearish"}},
+            "1d": {"trend": "bearish", "macd": {"signal": "bearish"}},
+        }
+        result = score_multi_timeframe(mtf)
+        assert result["score"] < 40
+        assert result["alignment"]["alignment_score"] < -0.5
+
+    def test_conflicting_timeframes(self):
+        """周期间信号冲突应趋于中性"""
+        mtf = {
+            "1h": {"trend": "bullish", "macd": {"signal": "golden_cross"}},
+            "4h": {"trend": "bearish", "macd": {"signal": "death_cross"}},
+            "1d": {"trend": "sideways", "macd": {"signal": "neutral"}},
+        }
+        result = score_multi_timeframe(mtf)
+        assert 40 <= result["score"] <= 60
+        assert abs(result["alignment"]["alignment_score"]) < 0.5
+
+    def test_timeframe_weights_applied(self):
+        """验证不同周期权重差异"""
+        # 只有日线金叉
+        daily_only = {"1d": {"trend": "bullish", "macd": {"signal": "golden_cross"}}}
+        # 只有1分钟金叉
+        minute_only = {"1m": {"trend": "bullish", "macd": {"signal": "golden_cross"}}}
+
+        daily_result = score_multi_timeframe(daily_only)
+        minute_result = score_multi_timeframe(minute_only)
+
+        # 日线信号应该更强（权重更高的信号分数更高）
+        # 注意：由于归一化，单一周期的分数会被放大，但日线的基础分更高
+        assert daily_result["timeframe_scores"]["1d"]["score"] > minute_result["timeframe_scores"]["1m"]["score"]
 

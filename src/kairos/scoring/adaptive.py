@@ -1,6 +1,12 @@
 """自适应评分和信号确认模块"""
 from kairos.scoring.config import get_adaptive_weights, get_market_regime
 from kairos.scoring.engine import score_technical_v2, calc_signal_consistency
+from kairos.scoring.market_filter import (
+    calc_volume_oi_metrics, detect_market_state, score_market_state, MarketState
+)
+from kairos.scoring.engulf_pattern import (
+    detect_engulf_pattern, score_engulf_pattern, EngulfPattern
+)
 
 
 def check_volume_confirmation(indicators: dict, direction: str) -> dict:
@@ -120,47 +126,73 @@ def calc_enhanced_confidence(
     }
 
 
-def score_with_adaptive_weights(indicators: dict) -> dict:
+def score_with_adaptive_weights(indicators: dict, hist_df=None) -> dict:
     """带自适应权重的综合评分
-    
-    根据市场状态(ADX)动态调整各指标组的权重
+
+    根据市场状态(ADX)动态调整各指标组的权重，支持量价仓市场状态过滤
+
+    Args:
+        indicators: 技术指标字典
+        hist_df: 历史数据 DataFrame（可选，用于市场状态判定）
     """
     # 获取市场状态和自适应权重
     regime = get_market_regime(indicators)
     weights = get_adaptive_weights(indicators)
-    
+
     # 基础评分
     base_result = score_technical_v2(indicators)
     base_score = base_result["score"]
     signals = base_result["signals"]
-    
+
     # 计算信号一致性
     consistency = calc_signal_consistency(indicators)
-    
+
     # 确定信号方向
     direction = "bullish" if base_score >= 55 else "bearish" if base_score <= 45 else "neutral"
-    
+
     # 成交量确认
     volume_confirm = check_volume_confirmation(indicators, direction)
-    
+
+    # 市场状态过滤（基于量价仓）
+    market_state = MarketState.NORMAL
+    market_state_desc = ""
+    engulf_pattern = EngulfPattern.NONE
+    if hist_df is not None and not hist_df.empty:
+        # 市场状态判定
+        metrics = calc_volume_oi_metrics(hist_df)
+        market_state, market_state_desc = detect_market_state(metrics)
+        state_adj, state_signal = score_market_state(market_state, direction)
+        if state_signal:
+            base_score = max(0, min(100, base_score + state_adj))
+            signals.append(state_signal)
+
+        # 双日反包检测
+        engulf_pattern, engulf_dir, _ = detect_engulf_pattern(hist_df)
+        engulf_adj, engulf_signal = score_engulf_pattern(engulf_pattern, engulf_dir)
+        if engulf_signal:
+            base_score = max(0, min(100, base_score + engulf_adj))
+            signals.append(engulf_signal)
+
     # 计算增强置信度
     confidence = calc_enhanced_confidence(base_score, consistency, volume_confirm, regime)
-    
+
     # 添加额外信号说明
     if volume_confirm["confirmed"]:
         signals.append(f"✓ 量价配合: {volume_confirm['reason']}")
     elif volume_confirm.get("strength", 0) < 0:
         signals.append(f"⚠ 量价背离: {volume_confirm['reason']}")
-    
-    signals.append(f"📊 市场状态: {regime}")
-    
+
+    signals.append(f"📈 ADX状态: {regime}")
+
     return {
         "score": base_score,
         "signals": signals,
         "market_regime": regime,
+        "market_state": market_state.value,
+        "market_state_desc": market_state_desc,
+        "engulf_pattern": engulf_pattern.value,
         "adaptive_weights": weights,
         "consistency": consistency,
         "volume_confirmation": volume_confirm,
         "confidence": confidence
     }
-

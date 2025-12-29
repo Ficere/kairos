@@ -1,5 +1,9 @@
 """评分引擎 - 重构后的技术面评分系统"""
-from kairos.scoring.config import SCORING_CONFIG, get_adaptive_weights, get_market_regime
+from kairos.scoring.config import (
+    SCORING_CONFIG, get_adaptive_weights, get_market_regime,
+    TIMEFRAME_WEIGHTS, MACD_CROSS_BY_TIMEFRAME, TREND_BY_TIMEFRAME,
+    DIVERGENCE_CONFIG
+)
 
 
 def _score_trend(indicators: dict) -> tuple[int, str | None]:
@@ -117,6 +121,49 @@ def _score_obv(indicators: dict) -> tuple[int, str | None]:
     return score, signal
 
 
+def score_divergence(divergence: dict) -> tuple[int, str | None]:
+    """评分：背离信号（分级体系）
+
+    Args:
+        divergence: 背离检测结果，包含 type, confidence, indicator 字段
+
+    Returns:
+        (分数调整值, 信号描述)
+    """
+    if not divergence or divergence.get("type") == "无背离":
+        return 0, None
+
+    div_type = divergence.get("type", "")
+    confidence = divergence.get("confidence", "低")
+    indicator = divergence.get("indicator", "")
+
+    # 判断背离强度类型
+    is_multi_indicator = "+" in indicator  # 如 "MACD+RSI"
+
+    if is_multi_indicator:
+        cfg = DIVERGENCE_CONFIG["strong"]
+    else:
+        cfg = DIVERGENCE_CONFIG["regular"]
+
+    # 获取基础分数
+    if div_type == "顶背离":
+        base_score = cfg["bearish"]
+    elif div_type == "底背离":
+        base_score = cfg["bullish"]
+    else:
+        return 0, None
+
+    # 应用置信度系数
+    multiplier = DIVERGENCE_CONFIG["confidence_multiplier"].get(confidence, 0.5)
+    final_score = int(base_score * multiplier)
+
+    # 生成信号描述
+    strength = "强" if is_multi_indicator else ""
+    signal = f"{strength}{div_type}({indicator},置信{confidence}) {final_score:+d}"
+
+    return final_score, signal
+
+
 def score_technical_v2(indicators: dict) -> dict:
     """重构后的技术面评分（0-100）
     
@@ -179,10 +226,118 @@ def calc_signal_consistency(indicators: dict) -> dict:
     
     if not signals:
         return {"consistency": 0, "direction": "neutral", "count": 0}
-    
+
     avg = sum(signals) / len(signals)
     consistency = abs(avg)
     direction = "bullish" if avg > 0.3 else "bearish" if avg < -0.3 else "neutral"
-    
+
     return {"consistency": round(consistency, 2), "direction": direction, "count": len(signals)}
+
+
+def score_multi_timeframe(mtf_indicators: dict[str, dict]) -> dict:
+    """多周期融合评分
+
+    Args:
+        mtf_indicators: 多周期指标，key为周期("1m","5m"等)，value为指标字典
+
+    Returns:
+        包含加权评分和各周期信号的结果字典
+    """
+    if not mtf_indicators:
+        return {"score": 50, "signals": [], "timeframe_scores": {}}
+
+    weighted_score = 0.0
+    total_weight = 0.0
+    tf_scores = {}
+    signals = []
+
+    for tf, indicators in mtf_indicators.items():
+        weight = TIMEFRAME_WEIGHTS.get(tf, 0.1)
+
+        # 基础分50
+        tf_score = 50.0
+        tf_signals = []
+
+        # 趋势评分（按周期加权）
+        trend = indicators.get("trend", "sideways")
+        trend_cfg = TREND_BY_TIMEFRAME.get(tf, {"bullish": 10, "bearish": -10})
+        trend_delta = trend_cfg.get(trend, 0)
+        tf_score += trend_delta
+        if trend != "sideways":
+            tf_signals.append(f"{tf}趋势{trend} {trend_delta:+d}")
+
+        # MACD评分（金叉死叉按周期加权）
+        macd_sig = indicators.get("macd", {}).get("signal", "")
+        macd_cfg = MACD_CROSS_BY_TIMEFRAME.get(tf, SCORING_CONFIG["macd"])
+        if macd_sig in ("golden_cross", "death_cross"):
+            macd_delta = macd_cfg.get(macd_sig, 0)
+            tf_score += macd_delta
+            label = "金叉" if macd_sig == "golden_cross" else "死叉"
+            tf_signals.append(f"{tf}MACD{label} {macd_delta:+d}")
+        elif macd_sig in ("bullish", "bearish"):
+            # 非金叉死叉使用较小权重
+            macd_delta = 3 if macd_sig == "bullish" else -3
+            tf_score += macd_delta
+
+        # 动量指标（只对主要周期评分，避免过度加分）
+        if tf in ("1h", "4h", "1d"):
+            momentum_delta, momentum_sig = _score_momentum(indicators)
+            tf_score += momentum_delta * 0.5  # 降低权重避免重复
+            if momentum_sig:
+                tf_signals.append(f"{tf}{momentum_sig}")
+
+        tf_scores[tf] = {
+            "score": round(tf_score, 1),
+            "weight": weight,
+            "signals": tf_signals
+        }
+
+        weighted_score += tf_score * weight
+        total_weight += weight
+        signals.extend(tf_signals)
+
+    # 归一化
+    final_score = weighted_score / total_weight if total_weight > 0 else 50
+    final_score = max(0, min(100, final_score))
+
+    # 添加多周期对齐加分
+    alignment = _calc_timeframe_alignment(mtf_indicators)
+    if alignment["alignment_score"] > 0.6:
+        final_score += 5
+        signals.append(f"多周期多头共振 +5")
+    elif alignment["alignment_score"] < -0.6:
+        final_score -= 5
+        signals.append(f"多周期空头共振 -5")
+
+    return {
+        "score": round(final_score),
+        "signals": signals,
+        "timeframe_scores": tf_scores,
+        "alignment": alignment
+    }
+
+
+def _calc_timeframe_alignment(mtf_indicators: dict[str, dict]) -> dict:
+    """计算多周期信号对齐度"""
+    bullish = bearish = 0
+    for tf, ind in mtf_indicators.items():
+        trend = ind.get("trend", "sideways")
+        macd = ind.get("macd", {}).get("signal", "")
+        direction = 0
+        if trend == "bullish": direction += 1
+        elif trend == "bearish": direction -= 1
+        if "bullish" in macd or "golden" in macd: direction += 1
+        elif "bearish" in macd or "death" in macd: direction -= 1
+
+        if direction > 0: bullish += 1
+        elif direction < 0: bearish += 1
+
+    total = len(mtf_indicators)
+    score = (bullish - bearish) / total if total > 0 else 0
+    return {
+        "bullish_count": bullish,
+        "bearish_count": bearish,
+        "total": total,
+        "alignment_score": round(score, 2)
+    }
 

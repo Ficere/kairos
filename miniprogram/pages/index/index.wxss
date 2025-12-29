@@ -40,6 +40,14 @@
   font-size: 26rpx;
   color: #7f8c8d;
 }
+.date-picker {
+  display: flex;
+  align-items: center;
+  background: #ecf0f1;
+  padding: 10rpx 20rpx;
+  border-radius: 8rpx;
+}
+.picker-arrow { margin-left: 10rpx; font-size: 20rpx; }
 .refresh-hint { font-size: 22rpx; }
 
 /* 加载中 */
