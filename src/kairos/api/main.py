@@ -1,10 +1,11 @@
 """Kairos API 服务 - 为微信小程序提供数据接口"""
+import csv
 import json
-import os
 from datetime import datetime
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from platformdirs import user_data_dir
 
 app = FastAPI(title="Kairos API", version="1.0.0")
 
@@ -17,7 +18,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-PLANS_DIR = Path(__file__).parent.parent / "plans"
+
+def get_plans_dir() -> Path:
+    """获取 plans 目录路径"""
+    return Path(user_data_dir("kairos", "kairos")) / "plans"
 
 
 def get_date_str(date: str | None) -> str:
@@ -27,7 +31,7 @@ def get_date_str(date: str | None) -> str:
 
 def load_summary(date_str: str) -> dict | None:
     """加载 summary 文件"""
-    path = PLANS_DIR / f"summary_{date_str}.json"
+    path = get_plans_dir() / f"summary_{date_str}.json"
     if path.exists():
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -36,7 +40,7 @@ def load_summary(date_str: str) -> dict | None:
 
 def load_decisions(date_str: str) -> list[dict]:
     """加载所有 decision 文件"""
-    day_dir = PLANS_DIR / date_str
+    day_dir = get_plans_dir() / date_str
     if not day_dir.exists():
         return []
     decisions = []
@@ -47,15 +51,51 @@ def load_decisions(date_str: str) -> list[dict]:
     return sorted(decisions, key=lambda x: -x.get("scores", {}).get("total", 0))
 
 
+def load_perplexity_csv(date_str: str) -> list[dict]:
+    """加载 Perplexity 分析 CSV 文件"""
+    csv_path = get_plans_dir() / f"perplexity_suggestion_{date_str}.csv"
+    if not csv_path.exists():
+        return []
+    rows = []
+    with open(csv_path, "r", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            rows.append(row)
+    return rows
+
+
 @app.get("/api/dates")
 def get_available_dates():
     """获取可用的历史日期列表"""
     dates = []
-    if PLANS_DIR.exists():
-        for item in PLANS_DIR.iterdir():
+    plans_dir = get_plans_dir()
+    if plans_dir.exists():
+        for item in plans_dir.iterdir():
             if item.is_dir() and len(item.name) == 10:  # YYYY-MM-DD
                 dates.append(item.name)
     return {"dates": sorted(dates, reverse=True)[:30]}
+
+
+@app.get("/api/perplexity/dates")
+def get_perplexity_dates():
+    """获取有 Perplexity 分析数据的日期列表"""
+    dates = []
+    plans_dir = get_plans_dir()
+    if plans_dir.exists():
+        for f in plans_dir.iterdir():
+            if f.name.startswith("perplexity_suggestion_") and f.name.endswith(".csv"):
+                date_str = f.name.replace("perplexity_suggestion_", "").replace(".csv", "")
+                if len(date_str) == 10:
+                    dates.append(date_str)
+    return {"dates": sorted(dates, reverse=True)}
+
+
+@app.get("/api/perplexity")
+def get_perplexity_analysis(date: str | None = None):
+    """获取 Perplexity 宏观面分析结果"""
+    date_str = get_date_str(date)
+    rows = load_perplexity_csv(date_str)
+    return {"date": date_str, "total": len(rows), "suggestions": rows}
 
 
 @app.get("/api/summary")
@@ -122,7 +162,12 @@ def get_detail(contract: str, date: str | None = None):
     raise HTTPException(status_code=404, detail=f"未找到合约 {contract}")
 
 
-if __name__ == "__main__":
+def run_server(host: str = "0.0.0.0", port: int = 8000):
+    """启动 API 服务器"""
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=host, port=port)
+
+
+if __name__ == "__main__":
+    run_server()
 

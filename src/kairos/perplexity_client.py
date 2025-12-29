@@ -66,26 +66,21 @@ def normalize_record(raw: dict) -> dict:
     """将 Perplexity 返回的记录规范化为 CSV 格式"""
     record = DEFAULT_RECORD.copy()
 
-    # 处理品种和合约
-    variety_contract = raw.get("品种及主力合约", "")
-    if variety_contract:
-        parts = variety_contract.split()
-        record["品种"] = parts[0] if parts else variety_contract
-        record["合约"] = parts[1] if len(parts) > 1 else ""
-
-    # 映射其他字段
+    # 直接映射字段（Perplexity 实际返回的格式）
     field_map = {
+        "品种": "品种",
+        "合约": "合约",
         "方向": "方向",
         "最新价": "最新价",
         "参考开仓价区间": "参考开仓价区间",
         "目标价": "目标价",
         "止损价": "止损价",
         "技术面简述": "技术面简述",
-        "消息面/基本面简述": "消息面简述",
-        "交易确定性评级": "交易确定性评级",
+        "基本面简述": "消息面简述",
+        "交易确定性": "交易确定性评级",
     }
     for src, dst in field_map.items():
-        if src in raw:
+        if src in raw and raw[src] is not None:
             record[dst] = str(raw[src])
     return record
 
@@ -130,6 +125,10 @@ def call_perplexity_api(prompt: str, max_retries: int = 3, timeout: int = 120) -
 
     raise RuntimeError(f"Perplexity API 调用失败: {last_error}")
 
+def save_suggestions_text(text: str, output_path: Path) -> None:
+    """保存建议到文本文件"""
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(text)
 
 def save_suggestions_csv(records: list[dict], output_path: Path) -> None:
     """保存建议到 CSV 文件"""
@@ -154,6 +153,7 @@ def run_perplexity_analysis(prompt_path: str | Path) -> Path | None:
     print("🔄 正在调用 Perplexity API 进行宏观面分析...")
     try:
         response_text = call_perplexity_api(prompt)
+        save_suggestions_text(response_text, output_path.with_suffix(".json"))
     except (ImportError, RuntimeError) as e:
         print(f"❌ {e}")
         return None

@@ -58,11 +58,8 @@ def update_contracts():
 
 def run_web():
     """kairos-web 命令：启动 Web 应用"""
-    from kairos.web import app
-
-    print("🚀 启动 Kairos 期货分析系统 Web 应用...")
-    print("   访问地址: http://127.0.0.1:8050")
-    app.run(debug=True, host="0.0.0.0", port=8050)
+    from kairos.web import main
+    main()
 
 
 def regenerate_prompt():
@@ -216,6 +213,18 @@ def run_perplexity():
         print(f"\n❌ 分析失败")
 
 
+def run_api():
+    """kairos-api 命令：启动 API 服务"""
+    from kairos.api import run_server
+    args = sys.argv[1:]
+    port = 8000
+    for i, arg in enumerate(args):
+        if arg == "--port" and i + 1 < len(args):
+            port = int(args[i + 1])
+    print(f"🚀 启动 Kairos API 服务，端口: {port}")
+    run_server(port=port)
+
+
 def main():
     """kairos 主命令"""
     if len(sys.argv) < 2:
@@ -224,31 +233,25 @@ def main():
         print("  kairos-analyze [品种...]           分析指定品种（自动更新合约配置）")
         print("  kairos-analyze --all               分析所有品种")
         print("  kairos-web                         启动 Web 展示界面")
+        print("  kairos-api                         启动 API 服务（小程序后端）")
         print("  kairos-regenerate-prompt           重新生成 Deep Research 提示词")
         print("  kairos-perplexity                  调用 Perplexity 进行宏观面分析")
         print("\n示例:")
         print("  kairos-analyze CU0 AU0             分析铜和黄金")
         print("  kairos-analyze --all               一键分析所有品种（推荐）")
-        print("  kairos-regenerate-prompt --date 2025-12-15")
-        print("  kairos-perplexity --date 2025-12-15")
+        print("  kairos-api --port 8000             在指定端口启动 API")
         return
 
     cmd = sys.argv[1]
     sys.argv = [sys.argv[0]] + sys.argv[2:]  # 移除子命令
 
-    if cmd == "analyze":
-        analyze()
-    elif cmd == "update":
-        update_contracts()
-    elif cmd == "web":
-        run_web()
-    elif cmd == "regenerate-prompt":
-        regenerate_prompt()
-    elif cmd == "perplexity":
-        run_perplexity()
+    cmds = {"analyze": analyze, "update": update_contracts, "web": run_web,
+            "api": run_api, "regenerate-prompt": regenerate_prompt, "perplexity": run_perplexity}
+    if cmd in cmds:
+        cmds[cmd]()
     else:
         print(f"未知命令: {cmd}")
-        print("可用命令: analyze, update, web, regenerate-prompt, perplexity")
+        print(f"可用命令: {', '.join(cmds.keys())}")
 
 
 if __name__ == "__main__":

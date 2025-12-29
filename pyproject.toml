@@ -21,12 +21,14 @@ classifiers = [
 dependencies = [
     "akshare>=1.14.0",
     "dash>=3.3.0",
+    "fastapi>=0.115.0",
     "pandas>=2.0.0",
     "platformdirs>=4.0.0",
     "plotly>=5.0.0",
     "numpy>=1.24.0",
     "openpyxl>=3.1.5",
     "perplexityai>=0.22.2",
+    "uvicorn[standard]>=0.32.0",
 ]
 
 [project.scripts]
@@ -36,6 +38,7 @@ kairos-update = "kairos.cli:update_contracts"
 kairos-web = "kairos.cli:run_web"
 kairos-regenerate-prompt = "kairos.cli:regenerate_prompt"
 kairos-perplexity = "kairos.cli:run_perplexity"
+kairos-api = "kairos.cli:run_api"
 
 [build-system]
 requires = ["hatchling"]
