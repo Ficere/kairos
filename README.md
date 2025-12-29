@@ -22,6 +22,9 @@ uv sync
 
 ```bash
 uv run kairos-analyze --all         # 一键分析所有品种（推荐）
+# 如果你在.env中配置了perplexity key
+# 具体见下面【Perplexity 宏观面分析】的部分
+# uv run --env-file .env kairos-analyze --all
 uv run kairos-analyze AU0 CU0 AG0   # 分析指定品种
 ```
 
@@ -57,10 +60,10 @@ PERPLEXITY_API_KEY=pplx-xxxxxxxxxxxxxxxxxxxxxxxx
 **使用命令**：
 
 ```bash
-uv run kairos-perplexity                           # 使用最新提示词
-uv run kairos-perplexity --date 2025-12-15         # 指定日期的提示词
-uv run kairos-perplexity --prompt-file PATH        # 指定提示词文件
-uv run kairos-perplexity --force                   # 强制覆盖已存在的 CSV
+uv run --env-file .env kairos-perplexity                           # 使用最新提示词
+uv run --env-file .env kairos-perplexity --date 2025-12-15         # 指定日期的提示词
+uv run --env-file .env kairos-perplexity --prompt-file PATH        # 指定提示词文件
+uv run --env-file .env kairos-perplexity --force                   # 强制覆盖已存在的 CSV
 ```
 
 **输出文件**：`plans/perplexity_suggestion_YYYY-MM-DD.csv`，包含品种、方向、目标价、止损价、技术面/消息面简述等字段。
