@@ -197,5 +197,10 @@ def print_summary(results: dict, output_dir: str):
 
     # 生成 Deep Research 提示词
     from kairos.prompt_generator import generate_deep_research_prompt
-    generate_deep_research_prompt(results, output_dir)
+    prompt_path = generate_deep_research_prompt(results, output_dir)
+
+    # 调用 Perplexity 进行宏观面分析
+    if prompt_path:
+        from kairos.perplexity_client import run_perplexity_analysis
+        run_perplexity_analysis(prompt_path)
 

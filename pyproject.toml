@@ -26,6 +26,7 @@ dependencies = [
     "plotly>=5.0.0",
     "numpy>=1.24.0",
     "openpyxl>=3.1.5",
+    "perplexityai>=0.22.2",
 ]
 
 [project.scripts]
@@ -34,6 +35,7 @@ kairos-analyze = "kairos.cli:analyze"
 kairos-update = "kairos.cli:update_contracts"
 kairos-web = "kairos.cli:run_web"
 kairos-regenerate-prompt = "kairos.cli:regenerate_prompt"
+kairos-perplexity = "kairos.cli:run_perplexity"
 
 [build-system]
 requires = ["hatchling"]
@@ -45,9 +47,12 @@ packages = ["src/kairos"]
 [tool.hatch.build.targets.sdist]
 include = ["src/kairos"]
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
-    "pytest>=9.0.2",
+    "pytest",
+    "ruff",
+    "jupyterlab",
+    "ipywidgets",
 ]
 
 [tool.pytest.ini_options]

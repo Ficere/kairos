@@ -30,7 +30,8 @@
 <!-- USER_POSITIONS_START -->
 ```json
 [
-
+  {"contract": "J2605", "direction": "做空", "avg_price": 1678.5, "quantity": 4, "open_time": "2025-12-18"},
+  {"contract": "LC2605", "direction": "做空", "avg_price": 103000}
 ]
 ```
 <!-- USER_POSITIONS_END -->
@@ -71,7 +72,7 @@
 
 ## 3. 策略输出格式（表格形式）
 
-请最终输出一个**Markdown 表格**，每一行一个品种，列包含：
+请最终输出一个**json**，是一个list of dict，对于每一个品种，用一个dict给出确切的描述，包含以下key：
 
 - **品种及主力合约**（含合约号，例如：碳酸锂 lc2601）
 - **方向**（做多 / 做空 / 震荡偏多 / 震荡偏空 / 观望）
