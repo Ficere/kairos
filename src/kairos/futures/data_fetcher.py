@@ -37,15 +37,36 @@ def get_realtime_data() -> dict[str, MarketData]:
     return result
 
 
-def get_historical_data(contract_id: str, days: int = 15) -> pd.DataFrame:
-    """获取历史行情数据"""
+def get_historical_data(contract_id: str, days: int = 15, use_real_contract: bool = True) -> pd.DataFrame:
+    """获取历史行情数据
+
+    Args:
+        contract_id: 合约ID（如 J0）
+        days: 获取天数
+        use_real_contract: 是否优先使用真实主力合约数据（避免连续合约价格跳空导致指标失真）
+    """
     config = CONTRACTS.get(contract_id)
     if not config:
         return pd.DataFrame()
 
     symbol = config["symbol"]
+    main_contract = config.get("main_contract", "")
 
-    # 主力连续合约（XX0 格式）使用 futures_main_sina（需要小写）
+    # 优先获取真实主力合约数据（避免连续合约换月跳空导致 MACD 等指标失真）
+    if use_real_contract and main_contract and not main_contract.endswith("0"):
+        try:
+            df = ak.futures_zh_daily_sina(symbol=main_contract.lower())
+            if df is not None and not df.empty:
+                df = df.rename(columns={
+                    "日期": "date", "开盘价": "open", "最高价": "high",
+                    "最低价": "low", "收盘价": "close", "成交量": "volume", "持仓量": "hold"
+                })
+                if len(df) >= days:
+                    return df.tail(days)
+        except Exception as e:
+            print(f"获取真实合约 {main_contract} 数据失败，回退到连续合约: {e}")
+
+    # 回退：主力连续合约（XX0 格式）
     if symbol.upper().endswith("0"):
         try:
             df = ak.futures_main_sina(symbol=symbol.lower(), start_date="20240101", end_date="20261231")

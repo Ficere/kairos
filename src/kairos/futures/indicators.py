@@ -4,6 +4,25 @@ import numpy as np
 from kairos.futures.indicators_advanced import calc_obv, calc_adx
 
 
+def calc_macd_series(close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> dict:
+    """计算 MACD 序列（供背离检测等需要完整序列的场景使用）"""
+    ema_fast = close.ewm(span=fast, adjust=False).mean()
+    ema_slow = close.ewm(span=slow, adjust=False).mean()
+    dif = ema_fast - ema_slow
+    dea = dif.ewm(span=signal, adjust=False).mean()
+    macd = (dif - dea) * 2
+    return {"dif": dif, "dea": dea, "macd": macd}
+
+
+def calc_rsi_series(close: pd.Series, period: int = 14) -> pd.Series:
+    """计算 RSI 序列（供背离检测等需要完整序列的场景使用）"""
+    delta = close.diff()
+    gain = delta.where(delta > 0, 0).rolling(period).mean()
+    loss = (-delta).where(delta < 0, 0).rolling(period).mean()
+    rs = gain / loss
+    return 100 - (100 / (1 + rs))
+
+
 def calc_basic_indicators(df: pd.DataFrame) -> dict:
     """计算基础技术指标（供 scan_all_main 使用）"""
     if df.empty or len(df) < 5:
@@ -30,12 +49,9 @@ def calc_basic_indicators(df: pd.DataFrame) -> dict:
 
 
 def calc_macd(close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> dict:
-    """计算MACD指标"""
-    ema_fast = close.ewm(span=fast, adjust=False).mean()
-    ema_slow = close.ewm(span=slow, adjust=False).mean()
-    dif = ema_fast - ema_slow
-    dea = dif.ewm(span=signal, adjust=False).mean()
-    macd = (dif - dea) * 2
+    """计算MACD指标（复用 calc_macd_series 避免代码重复）"""
+    series = calc_macd_series(close, fast, slow, signal)
+    dif, dea, macd = series["dif"], series["dea"], series["macd"]
     return {
         "dif": round(float(dif.iloc[-1]), 4),
         "dea": round(float(dea.iloc[-1]), 4),
@@ -70,14 +86,8 @@ def calc_kdj(high: pd.Series, low: pd.Series, close: pd.Series, n: int = 9) -> d
 
 
 def calc_rsi(close: pd.Series, period: int = 14) -> dict:
-    """计算RSI指标"""
-    delta = close.diff()
-    gain = delta.where(delta > 0, 0)
-    loss = (-delta).where(delta < 0, 0)
-    avg_gain = gain.rolling(period).mean()
-    avg_loss = loss.rolling(period).mean()
-    rs = avg_gain / avg_loss
-    rsi = 100 - (100 / (1 + rs))
+    """计算RSI指标（复用 calc_rsi_series 避免代码重复）"""
+    rsi = calc_rsi_series(close, period)
     rsi_val = float(rsi.iloc[-1])
     zone = "overbought" if rsi_val > 70 else "oversold" if rsi_val < 30 else "neutral"
     return {"rsi": round(rsi_val, 2), "zone": zone}

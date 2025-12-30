@@ -38,8 +38,10 @@
     "exchange": "SHFE",
     "multiplier": 15,
     "tick": 1.0,
-    "main_contract": "AG2602",
-    "last_updated": "2025-12-11"
+    "main_contract": "AG2604",
+    "last_updated": "2025-12-30",
+    "previous_contract": "AG2602",
+    "contract_switch_date": "2025-12-30"
   },
   "AL": {
     "name": "铝",
@@ -634,8 +636,10 @@
     "exchange": "SHFE",
     "multiplier": 10,
     "tick": 1.0,
-    "main_contract": "WR2601",
-    "last_updated": "2025-12-11"
+    "main_contract": "WR2607",
+    "last_updated": "2025-12-30",
+    "previous_contract": "WR2601",
+    "contract_switch_date": "2025-12-30"
   },
   "Y": {
     "name": "豆油",

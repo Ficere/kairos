@@ -1,6 +1,7 @@
 """背离检测模块 - 检测价格与技术指标之间的背离"""
 import pandas as pd
 import numpy as np
+from kairos.futures.indicators import calc_macd_series, calc_rsi_series
 
 
 def find_local_extrema(series: pd.Series, order: int = 5) -> tuple[list, list]:
@@ -14,7 +15,7 @@ def find_local_extrema(series: pd.Series, order: int = 5) -> tuple[list, list]:
     highs, lows = [], []
     values = series.values
     n = len(values)
-    
+
     for i in range(order, n - order):
         window = values[i - order:i + order + 1]
         if values[i] == np.max(window):
@@ -33,24 +34,16 @@ def detect_divergence(df: pd.DataFrame, lookback: int = 30) -> dict:
         背离检测结果字典
     """
     result = {"type": "无背离", "confidence": "低", "indicator": "", "description": "未检测到明显背离"}
-    
+
     if df.empty or len(df) < lookback:
         return result
-    
+
     recent = df.tail(lookback).copy()
     close = recent['close'].astype(float)
-    
-    # 计算 MACD DIF
-    ema12 = close.ewm(span=12, adjust=False).mean()
-    ema26 = close.ewm(span=26, adjust=False).mean()
-    dif = ema12 - ema26
-    
-    # 计算 RSI
-    delta = close.diff()
-    gain = delta.where(delta > 0, 0).rolling(14).mean()
-    loss = (-delta).where(delta < 0, 0).rolling(14).mean()
-    rs = gain / loss
-    rsi = 100 - (100 / (1 + rs))
+
+    # 使用统一的指标计算函数（避免代码重复）
+    dif = calc_macd_series(close)["dif"]
+    rsi = calc_rsi_series(close)
     
     # 查找价格和指标的局部极值
     price_highs, price_lows = find_local_extrema(close, order=3)

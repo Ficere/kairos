@@ -75,14 +75,15 @@ def regenerate_prompt():
         print("  kairos-regenerate-prompt                    # 使用最新分析结果")
         print("  kairos-regenerate-prompt --date 2025-12-15  # 指定日期")
         print("  kairos-regenerate-prompt --force            # 强制覆盖已存在文件")
-        print("  kairos-regenerate-prompt --date 2025-12-15 --force")
+        print("  kairos-regenerate-prompt --recalc-technical # 重算技术面评分")
         print("\n说明:")
         print("  从已有的分析结果文件重新生成 Deep Research 提示词")
-        print("  适用于调试模板或基于历史数据重新生成提示词")
+        print("  使用 --recalc-technical 可基于缓存数据重新计算技术指标")
         print("\n参数:")
-        print("  --date DATE    指定日期 (格式: YYYY-MM-DD)")
-        print("  --force, -f    强制覆盖已存在的文件")
-        print("  --help, -h     显示此帮助信息")
+        print("  --date DATE          指定日期 (格式: YYYY-MM-DD)")
+        print("  --force, -f          强制覆盖已存在的文件")
+        print("  --recalc-technical   重新计算技术面评分（基于缓存数据）")
+        print("  --help, -h           显示此帮助信息")
         return
 
     print(f"\n{'='*60}")
@@ -91,6 +92,7 @@ def regenerate_prompt():
 
     date_str = None
     force = False
+    recalc = False
 
     # 解析参数
     i = 0
@@ -99,8 +101,11 @@ def regenerate_prompt():
         if arg == "--date" and i + 1 < len(args):
             date_str = args[i + 1]
             i += 2
-        elif arg == "--force" or arg == "-f":
+        elif arg in ("--force", "-f"):
             force = True
+            i += 1
+        elif arg == "--recalc-technical":
+            recalc = True
             i += 1
         elif arg.startswith("--"):
             print(f"❌ 未知参数: {arg}")
@@ -109,13 +114,50 @@ def regenerate_prompt():
         else:
             i += 1
 
-    # 执行重新生成
-    result = regenerate_prompt_from_file(date_str, force)
+    # 如果需要重算技术面
+    if recalc:
+        result = _recalc_and_regenerate(date_str, force)
+    else:
+        result = regenerate_prompt_from_file(date_str, force)
 
     if result:
         print(f"\n💡 提示: 可以将生成的文件内容复制到 ChatGPT/Claude 进行深度分析")
     else:
         print(f"\n❌ 生成失败")
+
+
+def _recalc_and_regenerate(date_str: str | None, force: bool) -> str | None:
+    """重算技术面并重新生成提示词"""
+    from kairos.prompt_loader import get_latest_analysis_date, validate_date_format
+    from kairos.recalculator import recalc_all_decisions, save_recalculated_decisions
+    from kairos.prompt_generator import regenerate_prompt_from_file
+
+    # 确定日期
+    if date_str is None:
+        date_str = get_latest_analysis_date()
+        if date_str is None:
+            print("❌ 未找到任何分析结果文件")
+            return None
+        print(f"📅 使用最新分析结果: {date_str}")
+    elif not validate_date_format(date_str):
+        print(f"❌ 日期格式错误: {date_str}")
+        return None
+
+    # 重算技术面
+    print(f"\n🔄 重新计算技术面评分...")
+    results = recalc_all_decisions(date_str)
+
+    if not results["decisions"]:
+        print(f"❌ 无法重算：{results.get('error', '未找到缓存数据')}")
+        print(f"   请确保 plans/{date_str}/raw_data/ 目录存在缓存数据")
+        return None
+
+    # 保存决策文件
+    save_recalculated_decisions(date_str, results["decisions"])
+
+    # 重新生成提示词
+    print(f"\n📝 重新生成 Deep Research 提示词...")
+    return regenerate_prompt_from_file(date_str, force=True)
 
 
 def run_perplexity():

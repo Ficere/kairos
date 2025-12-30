@@ -2,33 +2,48 @@
 import json
 import re
 
+# 从 prompt_positions 模块导入持仓相关函数
+from kairos.prompt_positions import (
+    parse_user_positions,
+    generate_positions_table,
+    replace_positions_config,
+)
+
+
+def _water_position(val: float) -> str:
+    """判断MACD指标的水上/水下位置"""
+    return "水上" if val >= 0 else "水下"
+
 
 def format_indicator_summary(d: dict) -> str:
-    """格式化技术指标摘要"""
+    """格式化技术指标摘要（简版，用于列表显示）"""
     ti = d.get("technical_indicators", {})
     parts = []
 
-    # MACD
+    # MACD - 增加具体数值
     macd = ti.get("macd", {})
     if macd:
         dif, dea = macd.get("dif", 0), macd.get("dea", 0)
-        parts.append("MACD多头" if dif > dea else "MACD空头")
+        macd_bar = (dif - dea) * 2
+        direction = "多头" if dif > dea else "空头"
+        parts.append(f"MACD{direction} DIF:{dif:.2f}({_water_position(dif)}) DEA:{dea:.2f}")
 
-    # RSI
+    # RSI - 增加区间说明
     rsi = ti.get("rsi", {})
     if rsi:
-        val = rsi.get("value", 50)
+        val = rsi.get("value", rsi.get("rsi", 50))
         if val > 70:
-            parts.append(f"RSI超买({int(val)})")
+            parts.append(f"RSI:{val:.0f}(超买70-100)")
         elif val < 30:
-            parts.append(f"RSI超卖({int(val)})")
+            parts.append(f"RSI:{val:.0f}(超卖0-30)")
         else:
-            parts.append(f"RSI:{int(val)}")
+            parts.append(f"RSI:{val:.0f}(中性30-70)")
 
-    # 背离
+    # 背离 - 增加置信度
     div = ti.get("divergence", {})
     if div and div.get("type") != "无背离":
-        parts.append(f"{div.get('type')}({div.get('indicator', '')})")
+        conf = div.get("confidence", "中")
+        parts.append(f"{div.get('type')}({div.get('indicator', '')},置信度:{conf})")
 
     return "，".join(parts) if parts else "指标中性"
 
@@ -127,132 +142,6 @@ def generate_tracking_table(user_config: list, decisions: list) -> str:
         lines.append(f"| {name} | {display} | {price} | {direction} | {score} | {reason} | {tech_status} |")
 
     return "\n".join(lines)
-
-
-def parse_user_positions(template: str) -> list:
-    """从模板中解析用户持仓信息
-
-    Args:
-        template: 模板内容
-
-    Returns:
-        用户持仓列表，每项包含 contract, direction, avg_price 等字段
-    """
-    pattern = r'<!-- USER_POSITIONS_START -->.*?```json\s*(.*?)\s*```.*?<!-- USER_POSITIONS_END -->'
-    match = re.search(pattern, template, re.DOTALL)
-    if not match:
-        return []
-
-    json_str = match.group(1).strip()
-    if not json_str or json_str == "[]":
-        return []
-
-    # 移除 JSON 中的尾随逗号
-    json_str = re.sub(r',\s*]', ']', json_str)
-    json_str = re.sub(r',\s*}', '}', json_str)
-
-    try:
-        positions = json.loads(json_str)
-        # 验证必填字段
-        valid_positions = []
-        for p in positions:
-            if all(k in p for k in ("contract", "direction", "avg_price")):
-                valid_positions.append(p)
-        return valid_positions
-    except json.JSONDecodeError:
-        return []
-
-
-def generate_positions_table(positions: list, decisions: list) -> str:
-    """生成用户持仓信息的 Markdown 表格
-
-    Args:
-        positions: 用户持仓列表
-        decisions: 分析结果列表（用于获取当前价格和信号）
-
-    Returns:
-        Markdown 格式的持仓表格
-    """
-    if not positions:
-        return "暂无持仓信息。\n"
-
-    # 构建合约到决策的映射（支持模糊匹配，如 CU2503 匹配 CU0 的分析结果）
-    decision_map = {}
-    for d in decisions:
-        contract = d.get("contract", "")
-        display = d.get("display_contract", "")
-        decision_map[contract] = d
-        decision_map[display] = d
-        # 提取品种代码用于模糊匹配
-        variety = re.sub(r'\d+$', '', contract.upper())
-        if variety and variety not in decision_map:
-            decision_map[variety] = d
-
-    lines = [
-        "| 合约 | 方向 | 开仓价 | 当前价 | 浮盈亏 | 持仓量 | 开仓时间 | 技术信号 |",
-        "|------|------|--------|--------|--------|--------|----------|----------|",
-    ]
-
-    for pos in positions:
-        contract = pos.get("contract", "")
-        direction = pos.get("direction", "")
-        avg_price = pos.get("avg_price", 0)
-        quantity = pos.get("quantity", "-")
-        open_time = pos.get("open_time", "-")
-
-        # 查找当前价格和技术信号
-        variety = re.sub(r'\d+$', '', contract.upper())
-        d = decision_map.get(contract.upper()) or decision_map.get(variety)
-
-        if d:
-            current_price = d.get("current_price", "N/A")
-            signal = d["decision"]["direction"]
-            # 计算浮盈亏
-            if isinstance(current_price, (int, float)) and avg_price:
-                if direction == "做多":
-                    pnl = current_price - avg_price
-                else:
-                    pnl = avg_price - current_price
-                pnl_str = f"{pnl:+.2f}" if pnl != 0 else "0"
-            else:
-                pnl_str = "-"
-        else:
-            current_price = "N/A"
-            signal = "未分析"
-            pnl_str = "-"
-
-        lines.append(f"| {contract} | {direction} | {avg_price} | {current_price} | {pnl_str} | {quantity} | {open_time} | {signal} |")
-
-    return "\n".join(lines)
-
-
-def replace_positions_config(template: str, decisions: list) -> str:
-    """替换模板中的 USER_POSITIONS 区域为持仓表格
-
-    Args:
-        template: 模板内容
-        decisions: 分析结果列表
-
-    Returns:
-        替换后的模板内容
-    """
-    positions = parse_user_positions(template)
-
-    if not positions:
-        # 无持仓时，移除整个持仓章节（从章节标题到下一个章节之前）
-        pattern = r'## 1\.5 我当前的持仓情况（可选）.*?(?=## 2\.)'
-        return re.sub(pattern, '', template, flags=re.DOTALL)
-
-    positions_table = generate_positions_table(positions, decisions)
-
-    # 替换 USER_POSITIONS 区域
-    pattern = r'<!-- USER_POSITIONS_START -->.*?<!-- USER_POSITIONS_END -->'
-    result = re.sub(pattern, positions_table, template, flags=re.DOTALL)
-
-    # 移除持仓配置说明
-    result = re.sub(r'\n> 💡 \*\*持仓配置说明\*\*：.*?(?=\n\*\*如果您有持仓)', '', result, flags=re.DOTALL)
-
-    return result
 
 
 def replace_tracking_config(template: str, decisions: list) -> str:

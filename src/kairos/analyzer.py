@@ -5,6 +5,7 @@ from datetime import datetime
 from kairos.futures.config import CONTRACTS, load_contracts
 from kairos.futures.display import get_daily_output_dir
 from kairos.futures.data_fetcher import get_historical_data, get_multi_timeframe_data
+from kairos.futures.data_cache import save_historical_data, save_multi_timeframe_data
 from kairos.futures.indicators import calc_all_indicators
 from kairos.futures.indicators_mtf import calc_multi_timeframe_indicators, get_timeframe_alignment
 from kairos.futures.divergence import detect_divergence
@@ -19,12 +20,14 @@ def run_step(step: int, total: int, name: str):
     print("-" * 50)
 
 
-def analyze_technical_single(contract_id: str, use_mtf: bool = False) -> dict | None:
+def analyze_technical_single(contract_id: str, use_mtf: bool = False,
+                             cache_data: bool = True) -> dict | None:
     """分析单个品种的技术面
 
     Args:
         contract_id: 合约ID
         use_mtf: 是否使用多周期分析（可能较慢）
+        cache_data: 是否缓存原始数据到本地
     """
     config = CONTRACTS.get(contract_id)
     if not config:
@@ -33,6 +36,10 @@ def analyze_technical_single(contract_id: str, use_mtf: bool = False) -> dict | 
     hist = get_historical_data(contract_id, days=60)
     if hist.empty or len(hist) < 20:
         return None
+
+    # 缓存日线数据
+    if cache_data:
+        save_historical_data(contract_id, hist)
 
     recent = hist.tail(20)
     indicators = calc_all_indicators(recent)
@@ -59,6 +66,9 @@ def analyze_technical_single(contract_id: str, use_mtf: bool = False) -> dict | 
     if use_mtf:
         mtf_data = get_multi_timeframe_data(contract_id)
         if mtf_data:
+            # 缓存多周期数据
+            if cache_data:
+                save_multi_timeframe_data(contract_id, mtf_data)
             mtf_indicators = calc_multi_timeframe_indicators(mtf_data)
             mtf_score = score_multi_timeframe(mtf_indicators)
             alignment = get_timeframe_alignment(mtf_indicators)
