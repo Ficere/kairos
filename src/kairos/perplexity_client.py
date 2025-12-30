@@ -1,38 +1,11 @@
 """Perplexity API 客户端 - 宏观面和基本面分析"""
 import json
 import re
-import csv
+import pandas as pd
 from datetime import datetime
 from pathlib import Path
 
 PLANS_DIR = Path(__file__).parent.parent.parent / "plans"
-
-# CSV 输出字段映射
-CSV_FIELDS = [
-    ("品种及主力合约", "品种"),
-    ("合约", "合约"),
-    ("方向", "方向"),
-    ("最新价", "最新价"),
-    ("参考开仓价区间", "参考开仓价区间"),
-    ("目标价", "目标价"),
-    ("止损价", "止损价"),
-    ("技术面简述", "技术面简述"),
-    ("消息面/基本面简述", "消息面简述"),
-    ("交易确定性评级", "交易确定性评级"),
-]
-
-DEFAULT_RECORD = {
-    "品种": "未知",
-    "合约": "",
-    "方向": "观望",
-    "最新价": "",
-    "参考开仓价区间": "",
-    "目标价": "",
-    "止损价": "",
-    "技术面简述": "数据解析失败",
-    "消息面简述": "数据解析失败",
-    "交易确定性评级": "低：数据获取失败",
-}
 
 
 def extract_json_from_text(text: str) -> list[dict] | None:
@@ -60,29 +33,6 @@ def extract_json_from_text(text: str) -> list[dict] | None:
             except (json.JSONDecodeError, IndexError):
                 continue
     return None
-
-
-def normalize_record(raw: dict) -> dict:
-    """将 Perplexity 返回的记录规范化为 CSV 格式"""
-    record = DEFAULT_RECORD.copy()
-
-    # 直接映射字段（Perplexity 实际返回的格式）
-    field_map = {
-        "品种": "品种",
-        "合约": "合约",
-        "方向": "方向",
-        "最新价": "最新价",
-        "参考开仓价区间": "参考开仓价区间",
-        "目标价": "目标价",
-        "止损价": "止损价",
-        "技术面简述": "技术面简述",
-        "基本面简述": "消息面简述",
-        "交易确定性": "交易确定性评级",
-    }
-    for src, dst in field_map.items():
-        if src in raw and raw[src] is not None:
-            record[dst] = str(raw[src])
-    return record
 
 
 def call_perplexity_api(prompt: str, max_retries: int = 3, timeout: int = 120) -> str:
@@ -132,11 +82,7 @@ def save_suggestions_text(text: str, output_path: Path) -> None:
 
 def save_suggestions_csv(records: list[dict], output_path: Path) -> None:
     """保存建议到 CSV 文件"""
-    headers = [f[1] for f in CSV_FIELDS]
-    with open(output_path, "w", encoding="utf-8-sig", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=headers, extrasaction="ignore")
-        writer.writeheader()
-        writer.writerows(records)
+    pd.DataFrame(records).to_csv(output_path, index=False, encoding="utf-8-sig")
 
 
 def run_perplexity_analysis(prompt_path: str | Path) -> Path | None:
@@ -164,9 +110,8 @@ def run_perplexity_analysis(prompt_path: str | Path) -> Path | None:
         print("⚠️ 无法解析 JSON，生成默认数据")
         data = [{"品种及主力合约": "解析失败", "方向": "观望"}]
 
-    records = [normalize_record(r) for r in data]
-    save_suggestions_csv(records, output_path)
-    print(f"✅ Perplexity 建议已保存: {output_path} ({len(records)} 条)")
+    save_suggestions_csv(data, output_path)
+    print(f"✅ Perplexity 建议已保存: {output_path} ({len(data)} 条)")
     return output_path
 
 
