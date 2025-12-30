@@ -93,3 +93,30 @@ class TestCalcADX:
         assert result["adx"] > 20
         assert result["direction"] == "bullish"
 
+    def test_adx_insufficient_data(self):
+        """测试数据不足时返回默认值"""
+        # 只有 20 条数据，不足 29 条
+        n = 20
+        base = [100 + i for i in range(n)]
+        high = pd.Series([b + 1 for b in base])
+        low = pd.Series([b - 1 for b in base])
+        close = pd.Series(base)
+        result = calc_adx(high, low, close)
+        # 数据不足应返回默认值
+        assert result["adx"] == 20.0
+        assert result["strength"] == "weak"
+        assert result["direction"] == "neutral"
+
+    def test_adx_no_nan(self):
+        """测试返回值不包含 NaN"""
+        np.random.seed(42)
+        n = 35  # 足够的数据
+        close = pd.Series(100 + np.cumsum(np.random.randn(n) * 2))
+        high = close + np.abs(np.random.randn(n))
+        low = close - np.abs(np.random.randn(n))
+        result = calc_adx(high, low, close)
+        # 确保没有 NaN
+        assert not np.isnan(result["adx"])
+        assert not np.isnan(result["plus_di"])
+        assert not np.isnan(result["minus_di"])
+

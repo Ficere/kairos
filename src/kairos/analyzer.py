@@ -34,14 +34,15 @@ def analyze_technical_single(contract_id: str, use_mtf: bool = False,
         return None
 
     hist = get_historical_data(contract_id, days=60)
-    if hist.empty or len(hist) < 20:
+    if hist.empty or len(hist) < 30:
         return None
 
     # 缓存日线数据
     if cache_data:
         save_historical_data(contract_id, hist)
 
-    recent = hist.tail(20)
+    # ADX 需要至少 2*14+1=29 个数据点，取 30 条确保有效计算
+    recent = hist.tail(30)
     indicators = calc_all_indicators(recent)
     if not indicators:
         return None

@@ -32,10 +32,11 @@ def recalc_technical_single(contract_id: str, date_str: str) -> dict | None:
     
     # 加载缓存的日线数据
     hist = load_historical_data(contract_id, date_str)
-    if hist is None or hist.empty or len(hist) < 20:
+    if hist is None or hist.empty or len(hist) < 30:
         return None
-    
-    recent = hist.tail(20)
+
+    # ADX 需要至少 2*14+1=29 个数据点，取 30 条确保有效计算
+    recent = hist.tail(30)
     indicators = calc_all_indicators(recent)
     if not indicators:
         return None
