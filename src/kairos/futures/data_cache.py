@@ -1,27 +1,33 @@
-"""原始市场数据缓存模块
+"""原始市场数据快照缓存模块
 
-用于保存和加载原始K线数据，支持技术面重算功能。
-缓存数据保存在 plans/YYYY-MM-DD/raw_data/ 目录下。
+用于保存每日分析时的原始K线快照，支持技术面重算功能。
+快照数据保存在 data/snapshots/YYYY-MM-DD/ 目录下。
+
+注意：此模块与 daily_cache.py 不同：
+- daily_cache.py: 持久化增量缓存，每合约一个文件
+- data_cache.py: 每日快照，用于历史重算
 """
-import os
 import json
 from pathlib import Path
 from datetime import datetime
 import pandas as pd
 
+# 快照缓存根目录（与持久化缓存 data/daily_cache/ 区分）
+SNAPSHOT_ROOT = Path("data/snapshots")
+
 
 def get_cache_dir(date_str: str | None = None) -> Path:
-    """获取缓存数据目录
-    
+    """获取快照缓存目录
+
     Args:
         date_str: 日期字符串 (YYYY-MM-DD)，默认使用当天
-    
+
     Returns:
-        缓存目录路径
+        快照目录路径 data/snapshots/YYYY-MM-DD/
     """
     if date_str is None:
         date_str = datetime.now().strftime("%Y-%m-%d")
-    return Path("plans") / date_str / "raw_data"
+    return SNAPSHOT_ROOT / date_str
 
 
 def save_historical_data(contract_id: str, df: pd.DataFrame, date_str: str | None = None) -> Path:

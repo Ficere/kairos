@@ -15,27 +15,24 @@ def load_analysis_results(date_str: str) -> dict | None:
     Returns:
         包含 decisions 和 switches 的字典，失败返回 None
     """
-    # 加载 summary 文件获取 switches
-    summary_path = PLANS_DIR / f"summary_{date_str}.json"
-    switches = []
-    if summary_path.exists():
-        try:
-            with open(summary_path, "r", encoding="utf-8") as f:
-                summary = json.load(f)
-                switches = summary.get("switches", [])
-        except (json.JSONDecodeError, IOError) as e:
-            print(f"⚠️ 读取 summary 文件失败: {e}")
-
-    # 加载所有 decision 文件
     day_dir = PLANS_DIR / date_str
     if not day_dir.exists():
         return None
 
     decisions = []
+    switches = []
     for decision_file in day_dir.glob("*_decision.json"):
         try:
             with open(decision_file, "r", encoding="utf-8") as f:
-                decisions.append(json.load(f))
+                d = json.load(f)
+                decisions.append(d)
+                # 从 decision 提取移仓信息
+                if d.get("contract_status") == "移仓中":
+                    switches.append({
+                        "name": d.get("name", ""),
+                        "variety": d.get("variety", ""),
+                        "main_contract": d.get("display_contract", d.get("contract", "")),
+                    })
         except (json.JSONDecodeError, IOError) as e:
             print(f"⚠️ 读取 {decision_file.name} 失败: {e}")
 

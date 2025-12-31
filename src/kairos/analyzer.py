@@ -9,7 +9,7 @@ from kairos.futures.data_cache import save_historical_data, save_multi_timeframe
 from kairos.futures.indicators import calc_all_indicators
 from kairos.futures.indicators_mtf import calc_multi_timeframe_indicators, get_timeframe_alignment
 from kairos.futures.divergence import detect_divergence
-from kairos.trading_decision import score_technical, calc_entry_stop_target, decide_confidence, extract_indicators_summary
+from kairos.trading_decision import score_technical, calc_entry_stop_target, decide_confidence
 from kairos.scoring.engine import score_multi_timeframe, score_divergence
 from kairos.contracts import update_contracts as update_contracts_impl, is_in_switch_period, get_switch_varieties, load_config
 
@@ -34,16 +34,15 @@ def analyze_technical_single(contract_id: str, use_mtf: bool = False,
         return None
 
     hist = get_historical_data(contract_id, days=60)
-    if hist.empty or len(hist) < 30:
+    if hist.empty or len(hist) < 35:
         return None
 
-    # 缓存日线数据
+    # 保存数据快照到 data/snapshots/YYYY-MM-DD/（供重算使用）
     if cache_data:
         save_historical_data(contract_id, hist)
 
-    # ADX 需要至少 2*14+1=29 个数据点，取 30 条确保有效计算
-    recent = hist.tail(30)
-    indicators = calc_all_indicators(recent)
+    # 使用全部历史数据计算指标（更长周期 = 更准确的 MA60/EMA）
+    indicators = calc_all_indicators(hist)
     if not indicators:
         return None
 
@@ -57,9 +56,9 @@ def analyze_technical_single(contract_id: str, use_mtf: bool = False,
         "indicators": indicators,
         "divergence": divergence,
         "latest": {
-            "price": float(recent['close'].iloc[-1]),
-            "high_20d": float(recent['high'].max()),
-            "low_20d": float(recent['low'].min()),
+            "price": float(hist['close'].iloc[-1]),
+            "high_20d": float(hist.tail(20)['high'].max()),
+            "low_20d": float(hist.tail(20)['low'].min()),
         },
     }
 
@@ -134,15 +133,14 @@ def make_decision_single(contract_id: str, tech: dict, macro: dict, contract_sta
     conf_score = total_score if direction == "做多" else (100 - total_score) if direction == "做空" else 0
     display = get_display_contract(contract_id, config)
 
-    # 决策文件保留关键字段 + 轻量级指标摘要，完整指标存储在 technical.json
+    # 决策文件只保留核心字段，详细技术指标存储在 technical.json
     result = {
         "contract": contract_id, "display_contract": display, "name": config.get("name", contract_id),
         "variety": config.get("variety", contract_id.replace("0", "").upper()),
         "contract_status": contract_status,
         "timestamp": datetime.now().isoformat(), "current_price": tech.get("latest", {}).get("price", 0),
         "scores": {"technical": tech_score, "macro": macro_score, "total": total_score},
-        "technical_indicators": extract_indicators_summary(tech),  # 轻量级摘要用于 prompt
-        "technical_signals": signals,
+        "technical_signals": signals,  # 仅保留信号摘要
         "decision": {"direction": direction, "entry_range": levels["entry_range"], "target": levels["target"],
                      "stop_loss": levels["stop_loss"], "confidence": decide_confidence(conf_score)},
     }
@@ -249,13 +247,6 @@ def print_summary(results: dict, output_dir: str):
                 status = d.get("contract_status", "")
                 icon = "🔥" if status == "主力" else "📦" if status == "移仓中" else ""
                 print(f"   {icon}{d.get('display_contract', d['contract']):8} 评分:{d['scores']['total']:3}")
-    date_str = datetime.now().strftime("%Y-%m-%d")
-    generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
-    os.makedirs("plans", exist_ok=True)
-    save_json(os.path.join("plans", f"summary_{date_str}.json"), {"timestamp": datetime.now().isoformat(),
-        "generated_at": generated_at, "success": len(results["success"]), "failed": results["failed"],
-        "switches": switches, "long_signals": [d["contract"] for d in longs],
-        "short_signals": [d["contract"] for d in shorts]})
 
     # 生成 Deep Research 提示词
     from kairos.prompt_generator import generate_deep_research_prompt

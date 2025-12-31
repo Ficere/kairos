@@ -2,7 +2,6 @@
 import sys
 from pathlib import Path
 from datetime import datetime
-import pandas as pd
 
 
 def analyze():
@@ -29,7 +28,6 @@ def analyze():
 
     results = run_full_analysis(contract_ids)
     out_dir = get_daily_output_dir()
-    pd.DataFrame(results["decisions"]).to_csv(Path(out_dir).parent / f"decisions_summary_{Path(out_dir).name}.csv", index=False)
     print_summary(results, out_dir)
     print(f"\n⚠️ 风险提示: 以上决策仅供参考，不构成投资建议")
 
@@ -149,7 +147,7 @@ def _recalc_and_regenerate(date_str: str | None, force: bool) -> str | None:
 
     if not results["decisions"]:
         print(f"❌ 无法重算：{results.get('error', '未找到缓存数据')}")
-        print(f"   请确保 plans/{date_str}/raw_data/ 目录存在缓存数据")
+        print(f"   请确保 data/snapshots/{date_str}/ 目录存在缓存数据")
         return None
 
     # 保存决策文件

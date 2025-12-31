@@ -48,20 +48,20 @@ def load_results(date_str: str | None = None) -> tuple[list, list, str]:
     if not date_str:
         date_str = datetime.now().strftime("%Y-%m-%d")
     output_dir = PLANS_DIR / date_str
-    decisions, switches, generated_at = [], [], ""
-    
-    summary_path = PLANS_DIR / f"summary_{date_str}.json"
-    if summary_path.exists():
-        with open(summary_path, "r", encoding="utf-8") as fp:
-            summary = json.load(fp)
-            switches = summary.get("switches", [])
-            generated_at = summary.get("generated_at", "")
-    
+    decisions, switches = [], []
+    generated_at = ""
+
     if output_dir.exists():
         for f in output_dir.iterdir():
             if f.name.endswith("_decision.json"):
                 with open(f, "r", encoding="utf-8") as fp:
-                    decisions.append(json.load(fp))
-    
-    return sorted(decisions, key=lambda x: -x["scores"]["total"]), switches, generated_at
+                    d = json.load(fp)
+                    decisions.append(d)
+                    # 从 decision 提取移仓信息和时间戳
+                    if not generated_at and d.get("timestamp"):
+                        generated_at = d["timestamp"][:16].replace("T", " ")
+                    if d.get("contract_status") == "移仓中":
+                        switches.append({"name": d.get("name", ""), "variety": d.get("variety", "")})
+
+    return sorted(decisions, key=lambda x: -x.get("scores", {}).get("total", 0)), switches, generated_at
 

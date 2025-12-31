@@ -27,25 +27,29 @@ def _ema_with_sma_init(series: pd.Series, period: int) -> pd.Series:
 
 def calc_macd_series(close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> dict:
     """计算 MACD 序列（使用 SMA 初始化的 EMA，与同花顺/通达信一致）"""
+    n = len(close)
+    empty = pd.Series([float('nan')] * n, index=close.index)
+
     # 数据不足时返回空结果
-    min_required = slow + signal
-    if len(close) < min_required:
-        empty = pd.Series([float('nan')] * len(close), index=close.index)
-        return {"dif": empty, "dea": empty, "macd": empty}
+    if n < slow:
+        return {"dif": empty.copy(), "dea": empty.copy(), "macd": empty.copy()}
 
     ema_fast = _ema_with_sma_init(close, fast)
     ema_slow = _ema_with_sma_init(close, slow)
     dif = ema_fast - ema_slow
 
-    # DEA 计算：从 DIF 有效值开始
-    dif_valid = dif.dropna()
-    if len(dif_valid) < signal:
-        dea_full = pd.Series([float('nan')] * len(close), index=close.index)
-    else:
-        dea_values = _ema_with_sma_init(dif_valid.reset_index(drop=True), signal)
-        dea_full = pd.Series(index=close.index, dtype=float)
-        start_idx = dif_valid.index[0]
-        dea_full.loc[dif_valid.index] = dea_values.values
+    # DEA 计算：对 DIF 序列应用 EMA
+    # DIF 从 index slow-1 开始有效
+    dif_start = slow - 1
+    dif_for_dea = dif.iloc[dif_start:].reset_index(drop=True)
+
+    if len(dif_for_dea) < signal:
+        return {"dif": dif, "dea": empty.copy(), "macd": empty.copy()}
+
+    dea_values = _ema_with_sma_init(dif_for_dea, signal)
+    # 将 DEA 值对齐回原索引
+    dea_full = pd.Series([float('nan')] * n, index=close.index)
+    dea_full.iloc[dif_start:dif_start + len(dea_values)] = dea_values.values
 
     macd = (dif - dea_full) * 2  # 国内习惯：MACD柱 = (DIF - DEA) * 2
     return {"dif": dif, "dea": dea_full, "macd": macd}
@@ -92,14 +96,28 @@ def calc_macd(close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9)
     """计算MACD指标（复用 calc_macd_series 避免代码重复）"""
     series = calc_macd_series(close, fast, slow, signal)
     dif, dea, macd = series["dif"], series["dea"], series["macd"]
-    return {
-        "dif": round(float(dif.iloc[-1]), 4),
-        "dea": round(float(dea.iloc[-1]), 4),
-        "macd": round(float(macd.iloc[-1]), 4),
-        "signal": "golden_cross" if dif.iloc[-1] > dea.iloc[-1] and dif.iloc[-2] <= dea.iloc[-2]
-                  else "death_cross" if dif.iloc[-1] < dea.iloc[-1] and dif.iloc[-2] >= dea.iloc[-2]
-                  else "bullish" if dif.iloc[-1] > dea.iloc[-1] else "bearish",
-    }
+
+    dif_val, dea_val, macd_val = dif.iloc[-1], dea.iloc[-1], macd.iloc[-1]
+
+    # 处理 NaN 情况
+    if pd.isna(dif_val) or pd.isna(dea_val):
+        return {"dif": 0, "dea": 0, "macd": 0, "signal": "neutral"}
+
+    # 判断信号（需要前一天数据）
+    if len(dif) >= 2 and len(dea) >= 2 and not pd.isna(dif.iloc[-2]) and not pd.isna(dea.iloc[-2]):
+        if dif_val > dea_val and dif.iloc[-2] <= dea.iloc[-2]:
+            sig = "golden_cross"
+        elif dif_val < dea_val and dif.iloc[-2] >= dea.iloc[-2]:
+            sig = "death_cross"
+        elif dif_val > dea_val:
+            sig = "bullish"
+        else:
+            sig = "bearish"
+    else:
+        sig = "bullish" if dif_val > dea_val else "bearish"
+
+    return {"dif": round(float(dif_val), 2), "dea": round(float(dea_val), 2),
+            "macd": round(float(macd_val), 2), "signal": sig}
 
 
 def calc_kdj(high: pd.Series, low: pd.Series, close: pd.Series, n: int = 9) -> dict:
@@ -178,8 +196,8 @@ def calc_ma(close: pd.Series, periods: list[int] = None) -> dict:
 
 
 def calc_all_indicators(df: pd.DataFrame) -> dict:
-    """计算所有技术指标"""
-    if df.empty or len(df) < 20:
+    """计算所有技术指标（需要至少 35 个数据点以确保 MACD 有效）"""
+    if df.empty or len(df) < 35:
         return {}
 
     close = df['close'].astype(float)

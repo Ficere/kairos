@@ -38,14 +38,30 @@ def test_macd_calculation():
     # 生成足够长的测试数据（需要至少 26 + 9 = 35 个点）
     close = pd.Series([100 + i * 0.5 for i in range(50)])
     result = calc_macd(close)
-    
+
     assert "dif" in result
     assert "dea" in result
     assert "macd" in result
     assert "signal" in result
-    
-    # DIF 应该是正的（上涨趋势）
-    assert result["dif"] > 0
+
+    # DIF 应该是正的（上涨趋势），且不为 0
+    assert result["dif"] > 0, f"DIF should be positive, got {result['dif']}"
+    assert result["dea"] != 0, f"DEA should not be 0"
+    assert result["signal"] in ["bullish", "bearish", "golden_cross", "death_cross"]
+
+
+def test_macd_with_real_price_range():
+    """测试高价位数据的 MACD 计算（类似 LC0 碳酸锂）"""
+    # 模拟 LC0 价格范围: 91100-134500，呈上涨趋势
+    base_price = 91000
+    close = pd.Series([base_price + i * 1000 + (i % 5) * 200 for i in range(45)])
+    result = calc_macd(close)
+
+    # 应该能正确计算，不返回 0
+    assert result["dif"] != 0, f"DIF should not be 0, got {result}"
+    assert result["dea"] != 0, f"DEA should not be 0, got {result}"
+    # 上涨趋势应该是 bullish
+    assert result["signal"] in ["bullish", "golden_cross"], f"Expected bullish signal, got {result['signal']}"
 
 
 def test_macd_golden_cross():
@@ -79,6 +95,9 @@ if __name__ == "__main__":
 
     test_macd_calculation()
     print("✓ MACD calculation test passed")
+
+    test_macd_with_real_price_range()
+    print("✓ MACD with real price range test passed")
 
     test_macd_golden_cross()
     print("✓ MACD golden cross test passed")

@@ -12,7 +12,7 @@ from kairos.futures.data_cache import (
 from kairos.futures.indicators import calc_all_indicators
 from kairos.futures.indicators_mtf import calc_multi_timeframe_indicators, get_timeframe_alignment
 from kairos.futures.divergence import detect_divergence
-from kairos.trading_decision import score_technical, calc_entry_stop_target, decide_confidence, extract_indicators_summary
+from kairos.trading_decision import score_technical, calc_entry_stop_target, decide_confidence
 from kairos.scoring.engine import score_multi_timeframe, score_divergence
 
 
@@ -30,19 +30,18 @@ def recalc_technical_single(contract_id: str, date_str: str) -> dict | None:
     if not config:
         return None
     
-    # 加载缓存的日线数据
+    # 从 data/snapshots/YYYY-MM-DD/ 加载快照数据
     hist = load_historical_data(contract_id, date_str)
-    if hist is None or hist.empty or len(hist) < 30:
+    if hist is None or hist.empty or len(hist) < 35:
         return None
 
-    # ADX 需要至少 2*14+1=29 个数据点，取 30 条确保有效计算
-    recent = hist.tail(30)
-    indicators = calc_all_indicators(recent)
+    # 使用全部历史数据计算指标
+    indicators = calc_all_indicators(hist)
     if not indicators:
         return None
-    
+
     divergence = detect_divergence(hist.tail(30), lookback=30) if len(hist) >= 30 else None
-    
+
     result = {
         "contract": contract_id,
         "name": config["name"],
@@ -53,9 +52,9 @@ def recalc_technical_single(contract_id: str, date_str: str) -> dict | None:
         "indicators": indicators,
         "divergence": divergence,
         "latest": {
-            "price": float(recent['close'].iloc[-1]),
-            "high_20d": float(recent['high'].max()),
-            "low_20d": float(recent['low'].min()),
+            "price": float(hist['close'].iloc[-1]),
+            "high_20d": float(hist.tail(20)['high'].max()),
+            "low_20d": float(hist.tail(20)['low'].min()),
         },
     }
     
@@ -117,7 +116,7 @@ def recalc_decision_single(contract_id: str, date_str: str,
         "contract_status": contract_status, "recalculated": True, "source_date": date_str,
         "timestamp": datetime.now().isoformat(), "current_price": price,
         "scores": {"technical": tech_score, "macro": 50, "total": total_score},
-        "technical_indicators": extract_indicators_summary(tech), "technical_signals": signals,
+        "technical_signals": signals,
         "decision": {"direction": direction, "entry_range": levels["entry_range"],
                      "target": levels["target"], "stop_loss": levels["stop_loss"],
                      "confidence": decide_confidence(conf_score)},

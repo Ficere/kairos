@@ -29,26 +29,22 @@ def get_date_str(date: str | None) -> str:
     return date or datetime.now().strftime("%Y-%m-%d")
 
 
-def load_summary(date_str: str) -> dict | None:
-    """加载 summary 文件"""
-    path = get_plans_dir() / f"summary_{date_str}.json"
-    if path.exists():
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return None
-
-
-def load_decisions(date_str: str) -> list[dict]:
-    """加载所有 decision 文件"""
+def load_decisions(date_str: str) -> tuple[list[dict], list[dict], str]:
+    """加载所有 decision 文件，返回 (decisions, switches, generated_at)"""
     day_dir = get_plans_dir() / date_str
     if not day_dir.exists():
-        return []
-    decisions = []
+        return [], [], ""
+    decisions, switches, generated_at = [], [], ""
     for f in day_dir.iterdir():
         if f.name.endswith("_decision.json"):
             with open(f, "r", encoding="utf-8") as fp:
-                decisions.append(json.load(fp))
-    return sorted(decisions, key=lambda x: -x.get("scores", {}).get("total", 0))
+                d = json.load(fp)
+                decisions.append(d)
+                if not generated_at and d.get("timestamp"):
+                    generated_at = d["timestamp"][:16].replace("T", " ")
+                if d.get("contract_status") == "移仓中":
+                    switches.append({"name": d.get("name", ""), "variety": d.get("variety", "")})
+    return sorted(decisions, key=lambda x: -x.get("scores", {}).get("total", 0)), switches, generated_at
 
 
 def load_perplexity_csv(date_str: str) -> list[dict]:
@@ -102,32 +98,29 @@ def get_perplexity_analysis(date: str | None = None):
 def get_summary(date: str | None = None):
     """获取汇总信息（含移仓列表）"""
     date_str = get_date_str(date)
-    summary = load_summary(date_str)
-    if not summary:
-        return {"date": date_str, "success": 0, "switches": [], "long_signals": [], "short_signals": []}
-    return {"date": date_str, **summary}
+    decisions, switches, _ = load_decisions(date_str)
+    longs = [d["contract"] for d in decisions if d.get("decision", {}).get("direction") == "做多"]
+    shorts = [d["contract"] for d in decisions if d.get("decision", {}).get("direction") == "做空"]
+    return {"date": date_str, "success": len(decisions), "switches": switches,
+            "long_signals": longs, "short_signals": shorts}
 
 
 @app.get("/api/results")
 def get_results(date: str | None = None, direction: str | None = None):
     """获取指定日期的分析结果"""
     date_str = get_date_str(date)
-    decisions = load_decisions(date_str)
-    summary = load_summary(date_str) or {}
-    
+    decisions, switches, generated_at = load_decisions(date_str)
+
     # 筛选方向
     if direction and direction != "总计":
         decisions = [d for d in decisions if d.get("decision", {}).get("direction") == direction]
-    
-    # 格式化返回数据
+
+    # 格式化返回数据（从 technical_signals 获取指标摘要）
     results = []
     for d in decisions:
-        ti = d.get("technical_indicators", {})
-        macd = ti.get("macd", {})
-        kdj = ti.get("kdj", {})
-        rsi = ti.get("rsi", {})
-        div = ti.get("divergence", {})
-        
+        signals = d.get("technical_signals", [])
+        signal_str = ", ".join(signals[:3]) if signals else "-"
+
         results.append({
             "contract": d.get("display_contract", d.get("contract", "")),
             "status": d.get("contract_status", "稳定"),
@@ -135,27 +128,19 @@ def get_results(date: str | None = None, direction: str | None = None):
             "price": d.get("current_price", 0),
             "direction": d.get("decision", {}).get("direction", "观望"),
             "score": d.get("scores", {}).get("total", 0),
-            "macd": f"DIF:{macd.get('dif', 0):.1f}" if macd else "-",
-            "kdj": f"K:{kdj.get('k', 0):.0f} D:{kdj.get('d', 0):.0f}" if kdj else "-",
-            "rsi": f"{rsi.get('value', 0):.0f}" if rsi else "-",
-            "divergence": div.get("type", "无背离") if div else "无背离",
+            "signals": signal_str,
             "confidence": d.get("decision", {}).get("confidence", "-"),
         })
-    
-    return {
-        "date": date_str,
-        "generated_at": summary.get("generated_at", ""),
-        "total": len(results),
-        "switches": summary.get("switches", []),
-        "results": results,
-    }
+
+    return {"date": date_str, "generated_at": generated_at, "total": len(results),
+            "switches": switches, "results": results}
 
 
 @app.get("/api/detail/{contract}")
 def get_detail(contract: str, date: str | None = None):
     """获取单个品种的详细信息"""
     date_str = get_date_str(date)
-    decisions = load_decisions(date_str)
+    decisions, _, _ = load_decisions(date_str)
     for d in decisions:
         if d.get("contract") == contract or d.get("display_contract") == contract:
             return {"date": date_str, "data": d}
