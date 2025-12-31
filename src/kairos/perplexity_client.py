@@ -96,6 +96,13 @@ def run_perplexity_analysis(prompt_path: str | Path) -> Path | None:
     date_str = datetime.now().strftime("%Y-%m-%d")
     output_path = Path("plans") / f"perplexity_suggestion_{date_str}.csv"
 
+    # 调试信息：显示提示词长度和日期
+    prompt_len = len(prompt)
+    print(f"📝 提示词长度: {prompt_len} 字符 (~{prompt_len // 4} tokens)")
+    print(f"📅 分析日期: {date_str}")
+    if prompt_len > 50000:
+        print(f"⚠️ 提示词较长，可能影响 API 响应质量")
+
     print("🔄 正在调用 Perplexity API 进行宏观面分析...")
     try:
         response_text = call_perplexity_api(prompt)
@@ -104,11 +111,14 @@ def run_perplexity_analysis(prompt_path: str | Path) -> Path | None:
         print(f"❌ {e}")
         return None
 
-    print("📊 解析 Perplexity 响应...")
+    print("\n📊 解析 Perplexity 响应...")
     data = extract_json_from_text(response_text)
     if not data:
-        print("⚠️ 无法解析 JSON，生成默认数据")
-        data = [{"品种及主力合约": "解析失败", "方向": "观望"}]
+        print("⚠️ 无法解析 JSON，检查原始响应...")
+        # 检查是否有错误信息
+        if "无法分析" in response_text or "未来日期" in response_text:
+            print(f"   API 响应错误: 请检查提示词中的日期格式")
+        data = [{"品种及主力合约": "解析失败", "方向": "观望", "备注": response_text[:200]}]
 
     save_suggestions_csv(data, output_path)
     print(f"✅ Perplexity 建议已保存: {output_path} ({len(data)} 条)")

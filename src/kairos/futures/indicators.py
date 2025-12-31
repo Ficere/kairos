@@ -4,22 +4,62 @@ import numpy as np
 from kairos.futures.indicators_advanced import calc_obv, calc_adx
 
 
+def _ema_with_sma_init(series: pd.Series, period: int) -> pd.Series:
+    """使用 SMA 初始化的 EMA（与同花顺/通达信一致）
+
+    算法：前 period 个数据用 SMA，之后用 EMA 递推
+    EMA_t = EMA_{t-1} * (1 - α) + Close_t * α, 其中 α = 2 / (period + 1)
+    """
+    # 边界检查：数据不足时返回全 NaN
+    if len(series) < period:
+        return pd.Series([float('nan')] * len(series), index=series.index)
+
+    alpha = 2 / (period + 1)
+    result = pd.Series(index=series.index, dtype=float)
+    # 第一个有效 EMA 值 = 前 period 个数据的 SMA
+    sma_init = series.iloc[:period].mean()
+    result.iloc[period - 1] = sma_init
+    # 递推计算后续 EMA
+    for i in range(period, len(series)):
+        result.iloc[i] = result.iloc[i - 1] * (1 - alpha) + series.iloc[i] * alpha
+    return result
+
+
 def calc_macd_series(close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> dict:
-    """计算 MACD 序列（供背离检测等需要完整序列的场景使用）"""
-    ema_fast = close.ewm(span=fast, adjust=False).mean()
-    ema_slow = close.ewm(span=slow, adjust=False).mean()
+    """计算 MACD 序列（使用 SMA 初始化的 EMA，与同花顺/通达信一致）"""
+    # 数据不足时返回空结果
+    min_required = slow + signal
+    if len(close) < min_required:
+        empty = pd.Series([float('nan')] * len(close), index=close.index)
+        return {"dif": empty, "dea": empty, "macd": empty}
+
+    ema_fast = _ema_with_sma_init(close, fast)
+    ema_slow = _ema_with_sma_init(close, slow)
     dif = ema_fast - ema_slow
-    dea = dif.ewm(span=signal, adjust=False).mean()
-    macd = (dif - dea) * 2
-    return {"dif": dif, "dea": dea, "macd": macd}
+
+    # DEA 计算：从 DIF 有效值开始
+    dif_valid = dif.dropna()
+    if len(dif_valid) < signal:
+        dea_full = pd.Series([float('nan')] * len(close), index=close.index)
+    else:
+        dea_values = _ema_with_sma_init(dif_valid.reset_index(drop=True), signal)
+        dea_full = pd.Series(index=close.index, dtype=float)
+        start_idx = dif_valid.index[0]
+        dea_full.loc[dif_valid.index] = dea_values.values
+
+    macd = (dif - dea_full) * 2  # 国内习惯：MACD柱 = (DIF - DEA) * 2
+    return {"dif": dif, "dea": dea_full, "macd": macd}
 
 
 def calc_rsi_series(close: pd.Series, period: int = 14) -> pd.Series:
-    """计算 RSI 序列（供背离检测等需要完整序列的场景使用）"""
+    """计算 RSI 序列（使用 Wilder 平滑法，与通达信一致）"""
     delta = close.diff()
-    gain = delta.where(delta > 0, 0).rolling(period).mean()
-    loss = (-delta).where(delta < 0, 0).rolling(period).mean()
-    rs = gain / loss
+    gain = delta.where(delta > 0, 0)
+    loss = (-delta).where(delta < 0, 0)
+    # 使用 Wilder 平滑（alpha = 1/period）
+    avg_gain = gain.ewm(alpha=1/period, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1/period, adjust=False).mean()
+    rs = avg_gain / avg_loss
     return 100 - (100 / (1 + rs))
 
 
@@ -85,12 +125,21 @@ def calc_kdj(high: pd.Series, low: pd.Series, close: pd.Series, n: int = 9) -> d
     }
 
 
-def calc_rsi(close: pd.Series, period: int = 14) -> dict:
-    """计算RSI指标（复用 calc_rsi_series 避免代码重复）"""
-    rsi = calc_rsi_series(close, period)
-    rsi_val = float(rsi.iloc[-1])
-    zone = "overbought" if rsi_val > 70 else "oversold" if rsi_val < 30 else "neutral"
-    return {"rsi": round(rsi_val, 2), "zone": zone}
+def calc_rsi(close: pd.Series, periods: list[int] = None) -> dict:
+    """计算多周期 RSI 指标（默认 RSI6, RSI12, RSI24）"""
+    if periods is None:
+        periods = [6, 12, 24]
+
+    result = {}
+    for period in periods:
+        rsi = calc_rsi_series(close, period)
+        result[f"rsi{period}"] = round(float(rsi.iloc[-1]), 2)
+
+    # 使用 RSI6 判断超买超卖区域（短周期更敏感）
+    rsi6 = result.get("rsi6", result.get(f"rsi{periods[0]}", 50))
+    zone = "overbought" if rsi6 > 70 else "oversold" if rsi6 < 30 else "neutral"
+    result["zone"] = zone
+    return result
 
 
 def calc_boll(close: pd.Series, period: int = 20, std_dev: int = 2) -> dict:
@@ -117,6 +166,17 @@ def calc_boll(close: pd.Series, period: int = 20, std_dev: int = 2) -> dict:
             "bandwidth": round(band_width, 2), "position": position}
 
 
+def calc_ma(close: pd.Series, periods: list[int] = None) -> dict:
+    """计算多周期移动平均线"""
+    if periods is None:
+        periods = [5, 10, 20, 30, 60]
+    result = {}
+    for period in periods:
+        if len(close) >= period:
+            result[f"ma{period}"] = round(float(close.rolling(period).mean().iloc[-1]), 2)
+    return result
+
+
 def calc_all_indicators(df: pd.DataFrame) -> dict:
     """计算所有技术指标"""
     if df.empty or len(df) < 20:
@@ -127,15 +187,16 @@ def calc_all_indicators(df: pd.DataFrame) -> dict:
     low = df['low'].astype(float)
     volume = df['volume'].astype(float) if 'volume' in df.columns else None
 
-    ma5 = close.rolling(5).mean().iloc[-1]
-    ma10 = close.rolling(10).mean().iloc[-1]
-    ma20 = close.rolling(20).mean().iloc[-1]
+    ma = calc_ma(close)
+    ma5 = ma.get("ma5", close.iloc[-1])
+    ma10 = ma.get("ma10", close.iloc[-1])
+    ma20 = ma.get("ma20", close.iloc[-1])
 
     tr = pd.concat([high - low, abs(high - close.shift(1)), abs(low - close.shift(1))], axis=1).max(axis=1)
     atr = float(tr.rolling(14).mean().iloc[-1])
 
     result = {
-        "ma": {"ma5": round(float(ma5), 2), "ma10": round(float(ma10), 2), "ma20": round(float(ma20), 2)},
+        "ma": ma,
         "atr": round(atr, 2),
         "trend": "bullish" if ma5 > ma10 > ma20 else "bearish" if ma5 < ma10 < ma20 else "sideways",
         "macd": calc_macd(close),

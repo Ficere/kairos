@@ -218,3 +218,4 @@ __marimo__/
 # Specific in this project
 plans/
 .DS_Store
+data/

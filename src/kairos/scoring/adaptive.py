@@ -126,7 +126,11 @@ def calc_enhanced_confidence(
     }
 
 
-def score_with_adaptive_weights(indicators: dict, hist_df=None) -> dict:
+def score_with_adaptive_weights(
+    indicators: dict,
+    hist_df=None,
+    contract_config: dict | None = None
+) -> dict:
     """带自适应权重的综合评分
 
     根据市场状态(ADX)动态调整各指标组的权重，支持量价仓市场状态过滤
@@ -134,15 +138,29 @@ def score_with_adaptive_weights(indicators: dict, hist_df=None) -> dict:
     Args:
         indicators: 技术指标字典
         hist_df: 历史数据 DataFrame（可选，用于市场状态判定）
+        contract_config: 合约配置（可选，用于移仓敏感期检测）
     """
     # 获取市场状态和自适应权重
     regime = get_market_regime(indicators)
     weights = get_adaptive_weights(indicators)
 
+    # 移仓敏感期检测（仅针对郑商所CZCE品种）
+    in_czce_switch_period = False
+    if contract_config:
+        exchange = contract_config.get("exchange", "")
+        if exchange == "CZCE":
+            from kairos.contracts import is_in_switch_period
+            in_czce_switch_period = is_in_switch_period(contract_config)
+
     # 基础评分
     base_result = score_technical_v2(indicators)
     base_score = base_result["score"]
     signals = base_result["signals"]
+
+    # 郑商所移仓敏感期降权：信号向中性值收敛30%
+    if in_czce_switch_period:
+        base_score = int(50 + (base_score - 50) * 0.7)
+        signals.append("⚠ 移仓敏感期(CZCE)，信号权重已降低30%")
 
     # 计算信号一致性
     consistency = calc_signal_consistency(indicators)

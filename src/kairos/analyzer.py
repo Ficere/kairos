@@ -9,7 +9,7 @@ from kairos.futures.data_cache import save_historical_data, save_multi_timeframe
 from kairos.futures.indicators import calc_all_indicators
 from kairos.futures.indicators_mtf import calc_multi_timeframe_indicators, get_timeframe_alignment
 from kairos.futures.divergence import detect_divergence
-from kairos.trading_decision import score_technical, calc_entry_stop_target, decide_confidence, extract_indicators
+from kairos.trading_decision import score_technical, calc_entry_stop_target, decide_confidence, extract_indicators_summary
 from kairos.scoring.engine import score_multi_timeframe, score_divergence
 from kairos.contracts import update_contracts as update_contracts_impl, is_in_switch_period, get_switch_varieties, load_config
 
@@ -115,8 +115,8 @@ def make_decision_single(contract_id: str, tech: dict, macro: dict, contract_sta
         elif alignment.get("alignment_score", 0) < -0.5:
             signals.insert(0, f"多周期共振↓({alignment.get('bearish_count', 0)}/{alignment.get('total', 0)})")
     else:
-        # 回退到单周期评分
-        tech_result = score_technical(tech.get("indicators", {}))
+        # 回退到单周期评分（传入合约配置用于移仓敏感期检测）
+        tech_result = score_technical(tech.get("indicators", {}), contract_config=config)
         tech_score, signals = tech_result["score"], tech_result["signals"]
 
     macro_score = macro.get("macro_score", 50)
@@ -134,23 +134,22 @@ def make_decision_single(contract_id: str, tech: dict, macro: dict, contract_sta
     conf_score = total_score if direction == "做多" else (100 - total_score) if direction == "做空" else 0
     display = get_display_contract(contract_id, config)
 
+    # 决策文件保留关键字段 + 轻量级指标摘要，完整指标存储在 technical.json
     result = {
         "contract": contract_id, "display_contract": display, "name": config.get("name", contract_id),
+        "variety": config.get("variety", contract_id.replace("0", "").upper()),
         "contract_status": contract_status,
         "timestamp": datetime.now().isoformat(), "current_price": tech.get("latest", {}).get("price", 0),
         "scores": {"technical": tech_score, "macro": macro_score, "total": total_score},
-        "technical_indicators": extract_indicators(tech), "technical_signals": signals,
+        "technical_indicators": extract_indicators_summary(tech),  # 轻量级摘要用于 prompt
+        "technical_signals": signals,
         "decision": {"direction": direction, "entry_range": levels["entry_range"], "target": levels["target"],
                      "stop_loss": levels["stop_loss"], "confidence": decide_confidence(conf_score)},
     }
 
-    # 添加多周期详情（如果有）
+    # 添加多周期对齐摘要（如果有）
     if mtf_data:
-        result["mtf_analysis"] = {
-            "timeframes": mtf_data.get("timeframes", []),
-            "alignment": mtf_data.get("alignment", {}),
-            "tf_scores": mtf_data.get("score", {}).get("timeframe_scores", {})
-        }
+        result["mtf_alignment"] = mtf_data.get("alignment", {})
 
     return result
 

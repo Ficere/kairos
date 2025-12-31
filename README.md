@@ -4,7 +4,8 @@
 
 ## 功能
 
-- **技术分析**：MACD、KDJ、RSI、BOLL、均线、ATR、背离检测
+- **技术分析**：MACD、KDJ、RSI、BOLL、ADX、OBV、均线、ATR、背离检测
+- **双数据源**：支持 Tushare 和新浪财经，自动降级保证数据可用性
 - **移仓监控**：自动检测主力合约切换，支持双合约分析
 - **Web 展示**：实时查看分析结果（纯展示模式）
 - **交易决策**：综合技术面和宏观面生成交易建议
@@ -55,6 +56,7 @@ uv run kairos-regenerate-prompt --force            # 强制覆盖已存在文件
 
 ```bash
 PERPLEXITY_API_KEY=pplx-xxxxxxxxxxxxxxxxxxxxxxxx
+TUSHARE_TOKEN=your_tushare_token_here  # 可选，用于期货数据获取
 ```
 
 **使用命令**：
@@ -158,6 +160,23 @@ plans/
 | 沪铜 | CU2602 | 92490.0 | 观望 | 50 | 工业金属龙头 | MACD多头，RSI超买(71) |
 
 **注意**：修改模板不会影响技术分析本身，只会改变发送给 LLM 的分析请求内容。
+
+## 数据源配置
+
+系统支持双数据源，自动降级保证数据可用性：
+
+| 优先级 | 数据源 | 说明 |
+|--------|--------|------|
+| 1 | Tushare | 需配置 `TUSHARE_TOKEN`，数据质量高 |
+| 2 | 新浪财经 | 免费数据源，无需配置 |
+
+**配置 Tushare（可选）**：
+
+1. 在 [Tushare](https://tushare.pro/) 注册获取 token
+2. 在 `.env` 文件中添加 `TUSHARE_TOKEN=your_token`
+3. 启动时会显示 `✓ Tushare 数据源已启用`
+
+未配置 Tushare 时，系统自动使用新浪财经数据源。
 
 ## 品种配置
 

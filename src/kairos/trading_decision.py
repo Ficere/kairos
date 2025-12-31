@@ -17,9 +17,14 @@ def load_json(path: str) -> dict | None:
     return None
 
 
-def score_technical(indicators: dict) -> dict:
-    """技术面评分（0-100）- 使用自适应权重评分引擎"""
-    return score_with_adaptive_weights(indicators)
+def score_technical(indicators: dict, contract_config: dict | None = None) -> dict:
+    """技术面评分（0-100）- 使用自适应权重评分引擎
+
+    Args:
+        indicators: 技术指标字典
+        contract_config: 合约配置（可选，用于移仓敏感期检测）
+    """
+    return score_with_adaptive_weights(indicators, contract_config=contract_config)
 
 
 def calc_entry_stop_target(tech: dict, macro: dict, direction: str) -> dict:
@@ -48,8 +53,20 @@ def decide_confidence(score: int) -> str:
     return "观望(0%)"
 
 
+def extract_indicators_summary(tech: dict) -> dict:
+    """提取轻量级指标摘要（用于 prompt 生成）"""
+    ind = tech.get("indicators", {})
+    macd = ind.get("macd", {})
+    rsi = ind.get("rsi", {})
+    return {
+        "macd": {"dif": macd.get("dif", 0), "dea": macd.get("dea", 0)},
+        "rsi": {"value": rsi.get("rsi6", rsi.get("rsi", 50))},
+        "divergence": tech.get("divergence", {}),
+    }
+
+
 def extract_indicators(tech: dict) -> dict:
-    """提取详细技术指标数值"""
+    """提取详细技术指标数值（完整版，存储在 technical.json）"""
     ind = tech.get("indicators", {})
     macd = ind.get("macd", {})
     kdj = ind.get("kdj", {})
@@ -63,10 +80,10 @@ def extract_indicators(tech: dict) -> dict:
     result = {
         "macd": {"dif": macd.get("dif", 0), "dea": macd.get("dea", 0), "macd": macd.get("macd", 0)},
         "kdj": {"k": kdj.get("k", 0), "d": kdj.get("d", 0), "j": kdj.get("j", 0)},
-        "rsi": {"value": rsi.get("rsi", 0)},
+        "rsi": rsi,  # 多周期 RSI
         "boll": {"upper": boll.get("upper", 0), "mid": boll.get("mid", 0), "lower": boll.get("lower", 0),
                  "current_price": price, "position": boll.get("position", "")},
-        "ma": {"ma5": ma.get("ma5", 0), "ma10": ma.get("ma10", 0), "ma20": ma.get("ma20", 0)},
+        "ma": ma,  # 多周期 MA
         "adx": {"adx": adx.get("adx", 0), "plus_di": adx.get("plus_di", 0),
                 "minus_di": adx.get("minus_di", 0), "strength": adx.get("strength", "weak")},
         "divergence": tech.get("divergence", {"type": "无背离", "confidence": "低", "indicator": "", "description": ""}),
@@ -95,8 +112,8 @@ def make_decision(contract_id: str) -> dict:
     if not tech:
         return {"error": f"未找到技术分析数据，请先运行分析"}
 
-    # 使用自适应评分（包含置信度和量价确认）
-    tech_result = score_technical(tech.get("indicators", {}))
+    # 使用自适应评分（包含置信度和量价确认，传入合约配置用于移仓敏感期检测）
+    tech_result = score_technical(tech.get("indicators", {}), contract_config=config)
     tech_score = tech_result["score"]
     signals = tech_result["signals"]
     confidence = tech_result.get("confidence", {})

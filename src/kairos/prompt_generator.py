@@ -21,6 +21,17 @@ from kairos.prompt_indicators import INDICATOR_DOCS, format_variety_compact
 TEMPLATE_PATH = Path(__file__).parent.parent.parent / "docs" / "deep_research_template.md"
 
 
+def _dedupe_by_variety(decisions: list, direction: str) -> list:
+    """按品种去重，每个品种只保留评分最高的合约"""
+    filtered = [d for d in decisions if d["decision"]["direction"] == direction]
+    variety_best = {}
+    for d in filtered:
+        variety = d.get("variety", d.get("contract", "")[:2].upper())
+        if variety not in variety_best or d["scores"]["total"] > variety_best[variety]["scores"]["total"]:
+            variety_best[variety] = d
+    return list(variety_best.values())
+
+
 def _process_template(date_str: str, decisions: list, switches: list) -> str:
     """处理模板并生成提示词内容"""
     template = TEMPLATE_PATH.read_text(encoding="utf-8")
@@ -30,8 +41,9 @@ def _process_template(date_str: str, decisions: list, switches: list) -> str:
     template = replace_tracking_config(template, decisions)
     template = replace_positions_config(template, decisions)
 
-    longs = [d for d in decisions if d["decision"]["direction"] == "做多"]
-    shorts = [d for d in decisions if d["decision"]["direction"] == "做空"]
+    # 按品种去重，确保数量统计准确
+    longs = _dedupe_by_variety(decisions, "做多")
+    shorts = _dedupe_by_variety(decisions, "做空")
 
     return _build_prompt(
         date_str, longs, shorts,
@@ -85,11 +97,17 @@ def _build_position_reminder(positions: list) -> str:
 
 
 def _build_indicator_details(decisions: list, direction: str, max_items: int = 5) -> str:
-    """为指定方向的品种构建紧凑指标摘要"""
+    """为指定方向的品种构建紧凑指标摘要（每个品种只保留评分最高的合约）"""
     filtered = [d for d in decisions if d["decision"]["direction"] == direction]
     if not filtered:
         return ""
-    sorted_items = sorted(filtered, key=lambda x: -x["scores"]["total"])[:max_items]
+    # 按品种去重，保留评分最高的
+    variety_best = {}
+    for d in filtered:
+        variety = d.get("variety", d.get("contract", "")[:2].upper())
+        if variety not in variety_best or d["scores"]["total"] > variety_best[variety]["scores"]["total"]:
+            variety_best[variety] = d
+    sorted_items = sorted(variety_best.values(), key=lambda x: -x["scores"]["total"])[:max_items]
     return "\n".join(format_variety_compact(d) for d in sorted_items)
 
 

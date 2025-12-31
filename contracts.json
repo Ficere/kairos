@@ -229,38 +229,6 @@
     "main_contract": "I2605",
     "last_updated": "2025-12-11"
   },
-  "IC": {
-    "name": "中证500股指期货",
-    "exchange": "CFFEX",
-    "multiplier": 200,
-    "tick": 0.2,
-    "main_contract": "IC0",
-    "last_updated": "2025-12-11"
-  },
-  "IF": {
-    "name": "沪深300股指期货",
-    "exchange": "CFFEX",
-    "multiplier": 300,
-    "tick": 0.2,
-    "main_contract": "IF0",
-    "last_updated": "2025-12-11"
-  },
-  "IH": {
-    "name": "上证50股指期货",
-    "exchange": "CFFEX",
-    "multiplier": 300,
-    "tick": 0.2,
-    "main_contract": "IH0",
-    "last_updated": "2025-12-11"
-  },
-  "IM": {
-    "name": "中证1000股指期货",
-    "exchange": "CFFEX",
-    "multiplier": 200,
-    "tick": 0.2,
-    "main_contract": "IM0",
-    "last_updated": "2025-12-11"
-  },
   "J": {
     "name": "焦炭",
     "exchange": "DCE",
@@ -565,44 +533,12 @@
     "main_contract": "SS2602",
     "last_updated": "2025-12-11"
   },
-  "T": {
-    "name": "10年期国债",
-    "exchange": "CFFEX",
-    "multiplier": 10000,
-    "tick": 0.005,
-    "main_contract": "T0",
-    "last_updated": "2025-12-11"
-  },
   "TA": {
     "name": "PTA",
     "exchange": "CZCE",
     "multiplier": 5,
     "tick": 2.0,
     "main_contract": "TA605",
-    "last_updated": "2025-12-11"
-  },
-  "TF": {
-    "name": "5年期国债",
-    "exchange": "CFFEX",
-    "multiplier": 10000,
-    "tick": 0.005,
-    "main_contract": "TF0",
-    "last_updated": "2025-12-11"
-  },
-  "TL": {
-    "name": "30年期国债",
-    "exchange": "CFFEX",
-    "multiplier": 10000,
-    "tick": 0.01,
-    "main_contract": "TL0",
-    "last_updated": "2025-12-11"
-  },
-  "TS": {
-    "name": "2年期国债",
-    "exchange": "CFFEX",
-    "multiplier": 20000,
-    "tick": 0.002,
-    "main_contract": "TS0",
     "last_updated": "2025-12-11"
   },
   "UR": {

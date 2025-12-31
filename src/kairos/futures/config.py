@@ -30,8 +30,13 @@ def get_config_path() -> str:
     return CONFIG_FILE
 
 
+# 排除的交易所和品种（中金所金融期货不适合商品期货分析）
+EXCLUDED_EXCHANGES = {"CFFEX"}
+EXCLUDED_VARIETIES = {"IC", "IF", "IH", "IM", "T", "TF", "TL", "TS"}
+
+
 def load_contracts() -> dict:
-    """从 JSON 文件加载合约配置，支持 XX0 格式和实际合约代码"""
+    """从 JSON 文件加载合约配置，支持 XX0 格式和实际合约代码（排除中金所）"""
     global CONTRACTS
     config_path = get_config_path()
     if not os.path.exists(config_path):
@@ -41,13 +46,17 @@ def load_contracts() -> dict:
         raw = json.load(f)
     contracts = {}
     for variety, info in raw.items():
+        # 排除中金所金融期货
+        exchange = info.get("exchange", "")
+        if exchange in EXCLUDED_EXCHANGES or variety in EXCLUDED_VARIETIES:
+            continue
         main = info.get("main_contract", f"{variety}0")
         is_real = main and not main.endswith("0")
         key = f"{variety}0"
         contracts[key] = {
             "symbol": f"{variety.lower()}0",
             "name": info.get("name", variety),
-            "exchange": info.get("exchange", ""),
+            "exchange": exchange,
             "multiplier": info.get("multiplier", 1),
             "tick": info.get("tick", 1),
             "variety": variety,

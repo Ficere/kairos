@@ -12,7 +12,7 @@ from kairos.futures.data_cache import (
 from kairos.futures.indicators import calc_all_indicators
 from kairos.futures.indicators_mtf import calc_multi_timeframe_indicators, get_timeframe_alignment
 from kairos.futures.divergence import detect_divergence
-from kairos.trading_decision import score_technical, calc_entry_stop_target, decide_confidence, extract_indicators
+from kairos.trading_decision import score_technical, calc_entry_stop_target, decide_confidence, extract_indicators_summary
 from kairos.scoring.engine import score_multi_timeframe, score_divergence
 
 
@@ -86,12 +86,12 @@ def recalc_decision_single(contract_id: str, date_str: str,
     config = CONTRACTS.get(contract_id, {})
     mtf_data = tech.get("mtf")
 
-    # 评分：优先使用多周期，否则回退单周期
+    # 评分：优先使用多周期，否则回退单周期（传入合约配置用于移仓敏感期检测）
     if mtf_data and mtf_data.get("score"):
         tech_score = mtf_data["score"]["score"]
         signals = mtf_data["score"].get("signals", [])[:5]
     else:
-        r = score_technical(tech.get("indicators", {}))
+        r = score_technical(tech.get("indicators", {}), contract_config=config)
         tech_score, signals = r["score"], r["signals"]
 
     # 背离评分
@@ -113,10 +113,11 @@ def recalc_decision_single(contract_id: str, date_str: str,
 
     return {
         "contract": contract_id, "display_contract": display, "name": config.get("name", contract_id),
+        "variety": config.get("variety", contract_id.replace("0", "").upper()),
         "contract_status": contract_status, "recalculated": True, "source_date": date_str,
         "timestamp": datetime.now().isoformat(), "current_price": price,
         "scores": {"technical": tech_score, "macro": 50, "total": total_score},
-        "technical_indicators": extract_indicators(tech), "technical_signals": signals,
+        "technical_indicators": extract_indicators_summary(tech), "technical_signals": signals,
         "decision": {"direction": direction, "entry_range": levels["entry_range"],
                      "target": levels["target"], "stop_loss": levels["stop_loss"],
                      "confidence": decide_confidence(conf_score)},

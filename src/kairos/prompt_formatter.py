@@ -28,10 +28,11 @@ def format_indicator_summary(d: dict) -> str:
         direction = "多头" if dif > dea else "空头"
         parts.append(f"MACD{direction} DIF:{dif:.2f}({_water_position(dif)}) DEA:{dea:.2f}")
 
-    # RSI - 增加区间说明
+    # RSI - 支持多周期格式
     rsi = ti.get("rsi", {})
     if rsi:
-        val = rsi.get("value", rsi.get("rsi", 50))
+        # 兼容多周期（rsi6/rsi12/rsi24）和旧格式（value/rsi）
+        val = rsi.get("value", rsi.get("rsi6", rsi.get("rsi", 50)))
         if val > 70:
             parts.append(f"RSI:{val:.0f}(超买70-100)")
         elif val < 30:
@@ -49,12 +50,23 @@ def format_indicator_summary(d: dict) -> str:
 
 
 def format_variety_list(decisions: list, direction: str) -> str:
-    """格式化品种列表（含价格）"""
+    """格式化品种列表（含价格），每个品种只保留评分最高的合约"""
     filtered = [d for d in decisions if d["decision"]["direction"] == direction]
     if not filtered:
         return "无\n"
+
+    # 按品种去重，保留评分最高的合约
+    variety_best = {}
+    for d in filtered:
+        variety = d.get("variety", d.get("contract", "")[:2].upper())
+        score = d["scores"]["total"]
+        if variety not in variety_best or score > variety_best[variety]["scores"]["total"]:
+            variety_best[variety] = d
+
+    # 按评分排序
+    sorted_items = sorted(variety_best.values(), key=lambda x: -x["scores"]["total"])
     lines = []
-    for i, d in enumerate(sorted(filtered, key=lambda x: -x["scores"]["total"]), 1):
+    for i, d in enumerate(sorted_items, 1):
         c = d.get("display_contract", d.get("contract", ""))
         n, p = d.get("name", ""), d.get("current_price", "N/A")
         lines.append(f"{i}. **{n}**({c}) - 价格: {p} - 评分: {d['scores']['total']} - {format_indicator_summary(d)}")

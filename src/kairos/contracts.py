@@ -7,6 +7,11 @@ from kairos.futures.config import get_config_path, ensure_config_dir
 EXCHANGE_NAME_MAP = {"上期所": "SHFE", "大商所": "DCE", "郑商所": "CZCE", "中金所": "CFFEX", "广期所": "GFEX"}
 SWITCH_MONITOR_DAYS = 30  # 移仓监控天数
 
+# 排除的交易所（金融期货不适合本系统的商品期货分析逻辑）
+EXCLUDED_EXCHANGES = {"CFFEX"}
+# 排除的品种代码（中金所金融期货）
+EXCLUDED_VARIETIES = {"IC", "IF", "IH", "IM", "T", "TF", "TL", "TS"}
+
 
 def load_config() -> dict:
     """加载配置文件"""
@@ -25,7 +30,7 @@ def save_config(config: dict):
 
 
 def fetch_futures_rules() -> dict:
-    """从 futures_rule 获取品种基础信息"""
+    """从 futures_rule 获取品种基础信息（排除中金所金融期货）"""
     try:
         df = ak.futures_rule()
         result = {}
@@ -34,6 +39,9 @@ def fetch_futures_rules() -> dict:
             if not code or "期权" in str(row.get("品种", "")):
                 continue
             exchange = EXCHANGE_NAME_MAP.get(row.get("交易所", ""), "UNKNOWN")
+            # 排除中金所金融期货
+            if exchange in EXCLUDED_EXCHANGES or code in EXCLUDED_VARIETIES:
+                continue
             multiplier = row.get("合约乘数", 1)
             tick = row.get("最小变动价位", 1)
             try:
