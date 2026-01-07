@@ -1392,6 +1392,7 @@ dependencies = [
     { name = "perplexityai" },
     { name = "platformdirs" },
     { name = "plotly" },
+    { name = "python-dotenv" },
     { name = "tushare" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -1418,6 +1419,7 @@ requires-dist = [
     { name = "platformdirs", specifier = ">=4.0.0" },
     { name = "plotly", specifier = ">=5.0.0" },
     { name = "pytest", marker = "extra == 'dev'" },
+    { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "tushare", specifier = ">=1.4.24" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32.0" },

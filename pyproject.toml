@@ -30,6 +30,7 @@ dependencies = [
     "perplexityai>=0.22.2",
     "uvicorn[standard]>=0.32.0",
     "tushare>=1.4.24",
+    "python-dotenv>=1.2.1",
 ]
 
 [project.scripts]

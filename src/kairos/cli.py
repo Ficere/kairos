@@ -2,6 +2,10 @@
 import sys
 from pathlib import Path
 from datetime import datetime
+from dotenv import load_dotenv
+
+# 自动加载 .env 文件（在任何命令执行前）
+load_dotenv()
 
 
 def analyze():

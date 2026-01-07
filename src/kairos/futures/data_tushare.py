@@ -35,11 +35,16 @@ def is_tushare_available() -> bool:
 
 
 def _get_api():
-    """获取 Tushare API 实例"""
+    """获取 Tushare API 实例（内部使用）"""
     global _ts_api
     if _ts_api is None:
         is_tushare_available()
     return _ts_api
+
+
+def get_tushare_api():
+    """获取 Tushare Pro API 实例（外部模块调用）"""
+    return _get_api()
 
 
 def _convert_ts_code(variety: str, exchange: str) -> str:
