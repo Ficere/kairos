@@ -15,7 +15,33 @@
 ```bash
 # 开发模式安装
 uv sync
+
+# 配置环境变量（可选但推荐）
+cp .env.example .env
+# 编辑 .env 文件，填入你的 API Key
 ```
+
+## 环境变量配置
+
+系统会自动加载项目根目录的 `.env` 文件，支持以下环境变量：
+
+| 变量名 | 必需 | 说明 |
+|--------|------|------|
+| `TUSHARE_TOKEN` | 可选 | Tushare API Token，用于获取高质量期货数据 |
+| `PERPLEXITY_API_KEY` | 可选 | Perplexity API Key，用于宏观面深度分析 |
+
+**快速配置**：
+
+```bash
+# 复制示例文件
+cp .env.example .env
+
+# 编辑 .env 文件
+# TUSHARE_TOKEN=your_token_here
+# PERPLEXITY_API_KEY=pplx-xxxxxxxx
+```
+
+> 📁 参考 [.env.example](.env.example) 获取完整的环境变量说明
 
 ## 命令行工具
 
@@ -23,13 +49,10 @@ uv sync
 
 ```bash
 uv run kairos-analyze --all         # 一键分析所有品种（推荐）
-# 如果你在.env中配置了perplexity key
-# 具体见下面【Perplexity 宏观面分析】的部分
-# uv run --env-file .env kairos-analyze --all
 uv run kairos-analyze AU0 CU0 AG0   # 分析指定品种
 ```
 
-> **说明**：`kairos-analyze` 会自动更新主力合约配置，无需额外操作。合约代码使用 `XX0` 格式（如 `AU0`、`CU0`）。
+> **说明**：`kairos-analyze` 会自动加载 `.env` 文件并更新主力合约配置。合约代码使用 `XX0` 格式（如 `AU0`、`CU0`）。
 
 ### Deep Research 提示词重新生成
 
@@ -50,27 +73,18 @@ uv run kairos-regenerate-prompt --force            # 强制覆盖已存在文件
 
 系统支持调用 Perplexity API 进行宏观面和基本面分析，自动生成交易建议 CSV 文件。
 
-**配置 API Key**：
+> 💡 配置 `PERPLEXITY_API_KEY` 后，`kairos-analyze --all` 会自动调用 Perplexity 分析。
 
-在项目根目录创建 `.env` 文件，添加：
-
-```bash
-PERPLEXITY_API_KEY=pplx-xxxxxxxxxxxxxxxxxxxxxxxx
-TUSHARE_TOKEN=your_tushare_token_here  # 可选，用于期货数据获取
-```
-
-**使用命令**：
+**单独调用命令**：
 
 ```bash
-uv run --env-file .env kairos-perplexity                           # 使用最新提示词
-uv run --env-file .env kairos-perplexity --date 2025-12-15         # 指定日期的提示词
-uv run --env-file .env kairos-perplexity --prompt-file PATH        # 指定提示词文件
-uv run --env-file .env kairos-perplexity --force                   # 强制覆盖已存在的 CSV
+uv run kairos-perplexity                           # 使用最新提示词
+uv run kairos-perplexity --date 2025-12-15         # 指定日期的提示词
+uv run kairos-perplexity --prompt-file PATH        # 指定提示词文件
+uv run kairos-perplexity --force                   # 强制覆盖已存在的 CSV
 ```
 
-**输出文件**：`plans/perplexity_suggestion_YYYY-MM-DD.csv`，包含品种、方向、目标价、止损价、技术面/消息面简述等字段。
-
-**注意**：运行 `kairos-analyze --all` 时会自动调用 Perplexity 分析（如已配置 API Key）。
+**输出文件**：`plans/perplexity_suggestion_YYYY-MM-DD.csv`
 
 ## Web 界面
 
@@ -99,11 +113,11 @@ crontab -e
 
 ```text
 plans/
-├── deep_research_2025-12-15.md   # Deep Research 提示词
-├── summary_2025-12-15.json       # 分析汇总（含移仓列表）
+├── deep_research_2025-12-15.md       # Deep Research 提示词
+├── perplexity_suggestion_*.csv       # Perplexity 分析结果（如已配置）
 └── 2025-12-15/
-    ├── CU0_decision.json         # 主力合约决策
-    └── CU0_technical.json        # 技术分析数据
+    ├── CU0_decision.json             # 交易决策（评分、方向、止盈止损）
+    └── CU0_technical.json            # 技术分析数据（完整指标）
 ```
 
 ### Deep Research 提示词
@@ -165,18 +179,14 @@ plans/
 
 系统支持双数据源，自动降级保证数据可用性：
 
-| 优先级 | 数据源 | 说明 |
-|--------|--------|------|
-| 1 | Tushare | 需配置 `TUSHARE_TOKEN`，数据质量高 |
-| 2 | 新浪财经 | 免费数据源，无需配置 |
+| 优先级 | 数据源 | 环境变量 | 说明 |
+|--------|--------|----------|------|
+| 1 | Tushare | `TUSHARE_TOKEN` | 数据质量高，需注册 |
+| 2 | 新浪财经 | 无需配置 | 免费数据源 |
 
-**配置 Tushare（可选）**：
+**获取 Tushare Token**：[tushare.pro](https://tushare.pro/) 注册后在个人中心获取。
 
-1. 在 [Tushare](https://tushare.pro/) 注册获取 token
-2. 在 `.env` 文件中添加 `TUSHARE_TOKEN=your_token`
-3. 启动时会显示 `✓ Tushare 数据源已启用`
-
-未配置 Tushare 时，系统自动使用新浪财经数据源。
+启动时显示 `✓ Tushare 数据源已启用` 表示配置成功。未配置时自动使用新浪财经。
 
 ## 品种配置
 
