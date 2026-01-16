@@ -16,7 +16,7 @@ from kairos.prompt_formatter import (
     replace_positions_config,
     parse_user_positions,
 )
-from kairos.prompt_indicators import INDICATOR_DOCS, format_variety_compact
+from kairos.prompt_indicators import format_variety_compact
 
 TEMPLATE_PATH = Path(__file__).parent.parent.parent / "docs" / "deep_research_template.md"
 
@@ -32,6 +32,14 @@ def _dedupe_by_variety(decisions: list, direction: str) -> list:
     return list(variety_best.values())
 
 
+def _remove_user_instructions(text: str) -> str:
+    """移除模板中的用户配置说明（以 > 💡 开头的引用块）"""
+    import re
+    # 移除 > 💡 **持仓配置说明** 及其后续的引用行（以 > 开头）
+    pattern = r'> 💡 \*\*持仓配置说明\*\*.*?(?=\n[^>]|\n\n|\Z)'
+    return re.sub(pattern, '', text, flags=re.DOTALL)
+
+
 def _process_template(date_str: str, decisions: list, switches: list) -> str:
     """处理模板并生成提示词内容"""
     template = TEMPLATE_PATH.read_text(encoding="utf-8")
@@ -40,6 +48,7 @@ def _process_template(date_str: str, decisions: list, switches: list) -> str:
     template = template.replace("[请在此处填写日期，例如：2025-12-11]", date_str)
     template = replace_tracking_config(template, decisions)
     template = replace_positions_config(template, decisions)
+    template = _remove_user_instructions(template)  # 移除用户配置说明
 
     # 按品种去重，确保数量统计准确
     longs = _dedupe_by_variety(decisions, "做多")
@@ -122,7 +131,6 @@ def _build_prompt(
 
     return f"""# 期货市场深度分析请求 - {date_str}
 
-{INDICATOR_DOCS}
 ## 技术分析信号汇总
 
 ### 做多信号（{len(longs)}个）
